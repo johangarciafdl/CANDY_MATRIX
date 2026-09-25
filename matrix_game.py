@@ -383,6 +383,10 @@ def jugar(ventana, sound, tema_id='matrices'):
                             pausar_reloj(mostrar_zona_estudio(ventana, tablero, sound, tema_id))
                         elif botones["excel"].collidepoint(mx, my):
                             guardar_reporte(avisar=True)
+                        elif botones["menu"].collidepoint(mx, my):
+                            guardar_reporte()
+                            progress.registrar_resultado(tema_id, level, score)
+                            return 'menu'
 
                 elif event.type == pygame.MOUSEBUTTONUP and estado_juego == "jugando":
                     if arrastre_origen and not anim.ocupado() and not habilidad_activa:

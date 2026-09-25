@@ -528,6 +528,10 @@ def jugar(ventana, sound, tema_id='vectores'):
                             pausar_reloj(mostrar_zona_estudio(ventana, generar_tablero(), sound, tema_id))
                         elif botones["excel"].collidepoint(mx, my):
                             guardar_reporte(avisar=True)
+                        elif botones["menu"].collidepoint(mx, my):
+                            guardar_reporte()
+                            progress.registrar_resultado(tema_id, nivel, score)
+                            return 'menu'
 
                 elif event.type == pygame.KEYDOWN and estado_juego == "jugando":
                     if event.key == pygame.K_ESCAPE:

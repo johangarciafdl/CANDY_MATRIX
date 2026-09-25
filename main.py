@@ -5,6 +5,7 @@ from sound_manager import SoundManager
 from learn_zone import mostrar_zona_estudio
 from ui import mostrar_menu_inicio
 from hub import mostrar_hub_temas
+from intro import mostrar_intro
 import matrix_game
 import vector_game
 import system_game
@@ -15,6 +16,8 @@ ventana = pygame.display.set_mode((Config.ANCHO, Config.ALTO))
 pygame.display.set_caption("Candy Matrix - Proyecto Álgebra Lineal")
 
 sound = SoundManager()
+
+mostrar_intro(ventana)
 
 JUEGOS_POR_TEMA = {
     'matrices': matrix_game.jugar,

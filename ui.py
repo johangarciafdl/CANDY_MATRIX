@@ -296,8 +296,9 @@ def get_panel_buttons():
     """Rects de los botones del panel derecho (sin dibujar), para hit-testing."""
     panel_x = Config.LEFT_WIDTH
     return {
-        "estudio": pygame.Rect(panel_x + 30, 592, Config.RIGHT_PANEL_WIDTH - 60, 55),
-        "excel": pygame.Rect(panel_x + 30, 657, Config.RIGHT_PANEL_WIDTH - 60, 55),
+        "estudio": pygame.Rect(panel_x + 30, 580, Config.RIGHT_PANEL_WIDTH - 60, 50),
+        "excel": pygame.Rect(panel_x + 30, 638, Config.RIGHT_PANEL_WIDTH - 60, 50),
+        "menu": pygame.Rect(panel_x + 30, 696, Config.RIGHT_PANEL_WIDTH - 60, 50),
     }
 
 
@@ -351,6 +352,7 @@ def draw_right_panel(ventana, level, score, moves, tiempo_restante, goal=None, t
     botones = get_panel_buttons()
     draw_button(ventana, botones["estudio"], "Zona de Estudio", mouse_pos, (200, 100, 60), (230, 130, 85))
     draw_button(ventana, botones["excel"], "Exportar Excel", mouse_pos, (60, 130, 210), (90, 160, 235))
+    draw_button(ventana, botones["menu"], "Menú principal", mouse_pos, (140, 90, 90), (170, 115, 115))
 
-    ventana.blit(texto(font_small, "ESC: Zona de Estudio", (130, 90, 80)), (panel_x + 30, 722))
+    ventana.blit(texto(font_small, "ESC: Zona de Estudio", (130, 90, 80)), (panel_x + 30, 754))
     return botones
