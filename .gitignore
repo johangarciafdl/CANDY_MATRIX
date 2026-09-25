@@ -1,0 +1,26 @@
+# Este repositorio es el juego Python (pygame). El puerto a Unity quedó en pausa
+# (ver decisión del usuario) y su carpeta completa se deja fuera del control de
+# versiones aquí: es contenido y caché de otro motor, no del proyecto Python.
+Unity/
+Library/
+Temp/
+Logs/
+Packages/
+ProjectSettings/
+UserSettings/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Mm]emoryCaptures/
+*.csproj
+*.sln
+*.meta
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.venv/
+_docx_review/
+
+# Progreso del jugador (datos locales de partidas, no código fuente)
+progreso_estudiante.json
