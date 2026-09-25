@@ -124,13 +124,26 @@ _DIBUJANTES = [_manzana, _pera, _arandano, _limon, _uva, _naranja, _sandia]
 
 
 # -------------------- CACHÉ DE SPRITES --------------------
+_SUPERMUESTREO = 3  # se dibuja 3x más grande y se reduce con smoothscale: sin
+                     # esto, los círculos/óvalos de pygame.draw salen dentados.
+
+
 def _render_fruta(tipo, radio):
+    radio_hq = radio * _SUPERMUESTREO
+    pad_hq = max(6, int(radio_hq * 0.5))
+    lado_hq = radio_hq * 2 + pad_hq * 2
+    s_hq = pygame.Surface((lado_hq, lado_hq), pygame.SRCALPHA)
+    c_hq = lado_hq // 2
+    desplazamiento_hq = _DIBUJANTES[tipo](s_hq, c_hq, c_hq, radio_hq, COLOR_MAP[tipo])
+
     pad = max(6, int(radio * 0.5))
     lado = radio * 2 + pad * 2
-    s = pygame.Surface((lado, lado), pygame.SRCALPHA)
+    s = pygame.transform.smoothscale(s_hq, (lado, lado))
     c = lado // 2
-    desplazamiento = _DIBUJANTES[tipo](s, c, c, radio, COLOR_MAP[tipo])
+    desplazamiento = desplazamiento_hq // _SUPERMUESTREO
 
+    # El número se dibuja a resolución nativa (no se supermuestrea) para que
+    # el texto quede nítido en vez de suavizado de más.
     texto = str(tipo)
     sombra = font_large.render(texto, True, (30, 18, 12))
     frente = font_large.render(texto, True, BLANCO)

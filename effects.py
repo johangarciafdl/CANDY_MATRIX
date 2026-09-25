@@ -8,8 +8,18 @@ que no hay que guardar nada en el estado de cada partida."""
 import math
 import random
 import pygame
+import pygame.gfxdraw
 
 _particulas = []
+
+
+def _circulo_suave(surface, center, radio, color):
+    """Círculo con antialiasing real (gfxdraw), en vez del borde dentado que
+    deja pygame.draw.circle a estos tamaños tan pequeños."""
+    x, y = int(center[0]), int(center[1])
+    r = max(1, int(radio))
+    pygame.gfxdraw.filled_circle(surface, x, y, r, color)
+    pygame.gfxdraw.aacircle(surface, x, y, r, color)
 
 
 def spawn_burst(x, y, color, cantidad=14, velocidad=220, vida=0.55):
@@ -69,7 +79,7 @@ def update_and_draw(surface, dt):
             forma = pygame.transform.rotate(forma, math.degrees(p['giro']))
             capa.blit(forma, forma.get_rect(center=(capa.get_width() // 2, capa.get_height() // 2)))
         else:
-            pygame.draw.circle(capa, color, (capa.get_width() // 2, capa.get_height() // 2), int(radio))
+            _circulo_suave(capa, (capa.get_width() // 2, capa.get_height() // 2), radio, color)
         surface.blit(capa, (int(p['x'] - radio), int(p['y'] - radio)))
         vivas.append(p)
     _particulas[:] = vivas

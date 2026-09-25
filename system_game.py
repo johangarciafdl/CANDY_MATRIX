@@ -6,12 +6,13 @@ multiplicador k tal que Fila B + k·Fila A elimine una incógnita — el paso
 central de la eliminación gaussiana, hecho jugable. Comparte con los otros
 temas el mismo marco: panel derecho, cronómetro, habilidades cargables con
 preguntas, Zona de Estudio y exportación a Excel."""
+import math
 import random
 import time
 import pygame
 
 from config import Config, font, font_small, font_large, NEGRO
-from ui import draw_right_panel, get_panel_buttons, draw_button, texto
+from ui import draw_right_panel, get_panel_buttons, draw_button, texto, draw_circle_aa, draw_ring_aa
 from learn_zone import mostrar_zona_estudio
 from excel_exporter import export_to_excel
 from quiz_system import pick_question, generar_sistema_2x2, _formatea_ecuacion
@@ -64,7 +65,7 @@ def _icono_sistema(hid, lado=40):
     r = lado // 2 - 6
     if hid == 'escala':
         pygame.draw.line(s, (240, 240, 240), (c - r, c + r * 0.6), (c + r, c - r * 0.6), 3)
-        pygame.draw.circle(s, (255, 210, 90), (int(c + r * 0.7), int(c - r * 0.7)), 5)
+        draw_circle_aa(s, (int(c + r * 0.7), int(c - r * 0.7)), 5, (255, 210, 90))
     elif hid == 'intercambio':
         pygame.draw.line(s, (240, 240, 240), (c - r, c - r * 0.3), (c + r, c - r * 0.3), 3)
         pygame.draw.polygon(s, (240, 240, 240), [(c + r, c - r * 0.3 - 6), (c + r, c - r * 0.3 + 6), (c + r + 8, c - r * 0.3)])
@@ -72,8 +73,8 @@ def _icono_sistema(hid, lado=40):
         pygame.draw.polygon(s, (255, 210, 90), [(c - r, c + r * 0.3 - 6), (c - r, c + r * 0.3 + 6), (c - r - 8, c + r * 0.3)])
     else:  # revela_k
         for radio in (r, r * 0.6):
-            pygame.draw.circle(s, (240, 240, 240), (c, c), int(radio), 1)
-        pygame.draw.circle(s, (255, 210, 90), (c, c), 4)
+            draw_ring_aa(s, (c, c), radio, 1, (240, 240, 240))
+        draw_circle_aa(s, (c, c), 4, (255, 210, 90))
     return s
 
 
@@ -327,11 +328,21 @@ def jugar(ventana, sound, tema_id='sistemas'):
                     for i, h in enumerate(HABILIDADES_SISTEMAS)}
 
         def dibujar_carta(rect, fila, etiqueta, activa):
-            base = (232, 244, 255) if activa else (245, 240, 232)
+            en_fallo = fase == 'resultado' and not resultado_ok
+            if en_fallo:
+                # Sacudida corta + tinte rojo: el error necesitaba señal
+                # visual propia, no solo sonido y texto flotante.
+                t_fallo = time.time() - resultado_t0
+                amortiguacion = max(0.0, 1 - t_fallo / DUR_RESULTADO)
+                dx = int(5 * math.sin(t_fallo * 45) * amortiguacion)
+                rect = rect.move(dx, 0)
+                base, borde = (255, 210, 205), (200, 70, 60)
+            else:
+                base = (232, 244, 255) if activa else (245, 240, 232)
+                borde = (60, 130, 210) if activa else (200, 190, 180)
             pygame.draw.rect(ventana, tuple(int(c * 0.85) for c in base), rect.move(0, 3), border_radius=14)
             pygame.draw.rect(ventana, base, rect, border_radius=14)
-            pygame.draw.rect(ventana, (60, 130, 210) if activa else (200, 190, 180), rect,
-                             3 if activa else 2, border_radius=14)
+            pygame.draw.rect(ventana, borde, rect, 3 if (activa or en_fallo) else 2, border_radius=14)
             ventana.blit(texto(font_small, f"Ecuación {etiqueta}", (110, 90, 70)), (rect.x + 16, rect.y + 8))
             ventana.blit(texto(font_large, _formatea_ecuacion(fila), (30, 25, 20)), (rect.x + 16, rect.y + 34))
 

@@ -37,23 +37,30 @@ def _puntos_estrella(cx, cy, r_ext, r_int, puntas=5):
     return pts
 
 
+_SUPERMUESTREO_ICONO = 3
+
+
 def _icono(hid, lado=40):
     clave = (hid, lado)
     if clave in _ICONOS:
         return _ICONOS[clave]
 
-    s = pygame.Surface((lado, lado), pygame.SRCALPHA)
-    c = lado // 2
-    r = lado // 2 - 4
+    lado_hq = lado * _SUPERMUESTREO_ICONO
+    s = pygame.Surface((lado_hq, lado_hq), pygame.SRCALPHA)
+    c = lado_hq // 2
+    r = lado_hq // 2 - 4 * _SUPERMUESTREO_ICONO
 
     if hid == 'bomba':
-        pygame.draw.line(s, (150, 110, 60), (c + r * 0.4, c - r * 0.5), (c + r * 0.9, c - r * 1.0), 3)
-        pygame.draw.circle(s, (255, 190, 60), (int(c + r * 0.95), int(c - r * 1.0)), max(2, lado // 12))
+        pygame.draw.line(s, (150, 110, 60), (c + r * 0.4, c - r * 0.5), (c + r * 0.9, c - r * 1.0),
+                         3 * _SUPERMUESTREO_ICONO)
+        pygame.draw.circle(s, (255, 190, 60), (int(c + r * 0.95), int(c - r * 1.0)),
+                           max(2, lado // 12) * _SUPERMUESTREO_ICONO)
         pygame.draw.circle(s, (45, 45, 55), (c, c + 2), int(r * 0.82))
         pygame.draw.circle(s, (110, 110, 125), (int(c - r * 0.3), int(c - r * 0.2)), max(2, int(r * 0.2)))
     elif hid == 'estrella':
         pygame.draw.polygon(s, (255, 208, 70), _puntos_estrella(c, c + 1, r * 0.95, r * 0.42))
-        pygame.draw.polygon(s, (190, 130, 20), _puntos_estrella(c, c + 1, r * 0.95, r * 0.42), 2)
+        pygame.draw.polygon(s, (190, 130, 20), _puntos_estrella(c, c + 1, r * 0.95, r * 0.42),
+                            2 * _SUPERMUESTREO_ICONO)
     else:  # arcoíris
         colores = [(226, 74, 74), (240, 160, 50), (245, 214, 70), (95, 190, 100), (70, 140, 225), (150, 95, 200)]
         for k, color in enumerate(colores):
@@ -63,6 +70,7 @@ def _icono(hid, lado=40):
             rect = pygame.Rect(c - radio, c - radio + 6, radio * 2, radio * 2)
             pygame.draw.arc(s, color, rect, math.pi * 0.08, math.pi * 0.92, max(2, r // 7))
 
+    s = pygame.transform.smoothscale(s, (lado, lado))
     _ICONOS[clave] = s
     return s
 

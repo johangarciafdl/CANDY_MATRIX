@@ -19,11 +19,12 @@ def mostrar_hub_temas(ventana, tema_actual='matrices'):
     fondo = get_fondo_menu()
 
     cols = 3
-    card_w, card_h = 320, 204
-    gap_x, gap_y = 30, 24
+    card_w, card_h = 320, 214
+    gap_x, gap_y = 30, 22
     total_w = cols * card_w + (cols - 1) * gap_x
     x0 = (Config.ANCHO - total_w) // 2
-    y0 = 250
+    y0 = 244
+    inner_w = card_w - 2 * 18
 
     rects = {}
     for idx, t in enumerate(TEMAS):
@@ -54,13 +55,22 @@ def mostrar_hub_temas(ventana, tema_actual='matrices'):
             borde = (255, 226, 90) if t['id'] == tema_actual else (255, 255, 255)
             pygame.draw.rect(ventana, borde, rect, 3, border_radius=18)
 
-            ventana.blit(texto(font_small, t['continente'].upper(), (255, 245, 225)), (rect.x + 18, rect.y + 10))
-            ventana.blit(texto(font_large, t['nombre'], (255, 255, 255)), (rect.x + 18, rect.y + 30))
+            ventana.blit(texto(font_small, t['continente'].upper(), (255, 245, 225)), (rect.x + 18, rect.y + 8))
+            y = rect.y + 28
+
+            titulo_lineas = _envolver_px(font_large, t['nombre'], inner_w)
+            for linea in titulo_lineas:
+                ventana.blit(texto(font_large, linea, (255, 255, 255)), (rect.x + 18, y))
+                y += 32
+            y += 4
+
             if t['guardian']:
-                ventana.blit(texto(font_small, f"Guardián: {t['guardian']}", (255, 236, 200)),
-                             (rect.x + 18, rect.y + 62))
-            for i, linea in enumerate(_envolver(t['resumen'], 30)[:2]):
-                ventana.blit(texto(font_small, linea, (255, 255, 255)), (rect.x + 18, rect.y + 86 + i * 20))
+                ventana.blit(texto(font_small, f"Guardián: {t['guardian']}", (255, 236, 200)), (rect.x + 18, y))
+                y += 22
+
+            for linea in _envolver_px(font_small, t['resumen'], inner_w)[:2]:
+                ventana.blit(texto(font_small, linea, (255, 255, 255)), (rect.x + 18, y))
+                y += 19
 
             if t['disponible']:
                 prog = progress.resumen(t['id'])
@@ -68,7 +78,7 @@ def mostrar_hub_temas(ventana, tema_actual='matrices'):
                           if prog['mejor_nivel'] > 0 else "Aún sin jugar")
             else:
                 estado = "Próximamente"
-            ventana.blit(texto(font_small, estado, (255, 245, 225)), (rect.x + 18, rect.bottom - 30))
+            ventana.blit(texto(font_small, estado, (255, 245, 225)), (rect.x + 18, rect.bottom - 28))
 
         draw_button(ventana, btn_volver, "Volver", mouse_pos, (150, 90, 70), (180, 115, 90), font_obj=font_small)
 
@@ -87,14 +97,18 @@ def mostrar_hub_temas(ventana, tema_actual='matrices'):
                         return t['id']
 
 
-def _envolver(texto_largo, max_len=30):
+def _envolver_px(fuente, texto_largo, max_width):
+    """Ajuste de texto por ancho real en píxeles (no por conteo de caracteres):
+    con fuentes en negrita, una palabra ancha puede desbordar aunque el conteo
+    de letras parezca corto, así que medimos con la fuente real."""
     palabras = texto_largo.split()
     if not palabras:
         return []
     lineas, actual = [], palabras[0]
     for palabra in palabras[1:]:
-        if len(actual + ' ' + palabra) <= max_len:
-            actual += ' ' + palabra
+        candidato = actual + ' ' + palabra
+        if fuente.size(candidato)[0] <= max_width:
+            actual = candidato
         else:
             lineas.append(actual)
             actual = palabra

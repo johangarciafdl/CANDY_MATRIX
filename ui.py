@@ -1,6 +1,25 @@
-import pygame, sys, math
+import pygame, pygame.gfxdraw, sys, math
 from config import Config, COLOR_MAP, BLANCO, font, font_small, font_large, font_title
 from fruits import get_fruit_sprite
+
+
+# -------------------- PRIMITIVAS CON ANTIALIASING --------------------
+# pygame.draw.circle deja bordes dentados a los tamaños pequeños que usa este
+# juego; gfxdraw sí puede suavizarlos, así que estas dos funciones son el
+# reemplazo estándar en toda la interfaz.
+def draw_circle_aa(surface, center, radio, color):
+    """Círculo relleno con antialiasing."""
+    x, y = int(center[0]), int(center[1])
+    r = max(1, int(radio))
+    pygame.gfxdraw.filled_circle(surface, x, y, r, color)
+    pygame.gfxdraw.aacircle(surface, x, y, r, color)
+
+
+def draw_ring_aa(surface, center, radio, grosor, color):
+    """Anillo (círculo hueco) con antialiasing, apilando aros de 1px."""
+    x, y = int(center[0]), int(center[1])
+    for i in range(max(1, int(grosor))):
+        pygame.gfxdraw.aacircle(surface, x, y, max(1, int(radio) + i), color)
 
 # -------------------- FUNCIONES DE ANIMACIÓN --------------------
 def fade_in(surface, color=(0, 0, 0), duration=500):
@@ -145,8 +164,8 @@ def draw_seleccion(surface, center, radio):
     """Aro dorado pulsante sobre la fruta seleccionada."""
     x, y = center
     pulso = 4 + int(3 * math.sin(pygame.time.get_ticks() / 120))
-    pygame.draw.circle(surface, (255, 255, 255), (x, y), radio + 8 + pulso, 4)
-    pygame.draw.circle(surface, (255, 210, 40), (x, y), radio + 4 + pulso, 3)
+    draw_ring_aa(surface, (x, y), radio + 8 + pulso, 4, (255, 255, 255))
+    draw_ring_aa(surface, (x, y), radio + 4 + pulso, 3, (255, 210, 40))
 
 
 # -------------------- TABLA DE MATRIZ EN VIVO --------------------
@@ -300,11 +319,11 @@ def draw_right_panel(ventana, level, score, moves, tiempo_restante, goal=None, t
     pygame.draw.line(ventana, (215, 150, 120), (panel_x, 0), (panel_x, Config.ALTO), 4)
 
     if tema_nombre:
-        ventana.blit(texto(font_small, tema_nombre, (150, 90, 40)), (panel_x + 30, 2))
-    ventana.blit(texto(font_large, f"Nivel {level}", (140, 30, 30)), (panel_x + 30, 16))
+        ventana.blit(texto(font_small, tema_nombre, (150, 90, 40)), (panel_x + 30, 4))
+    ventana.blit(texto(font_large, f"Nivel {level}", (140, 30, 30)), (panel_x + 30, 26))
 
     if mostrar_matriz:
-        ventana.blit(texto(font_small, "Matriz del tablero (en vivo)", (60, 30, 20)), (panel_x + 30, 62))
+        ventana.blit(texto(font_small, "Matriz del tablero (en vivo)", (60, 30, 20)), (panel_x + 30, 64))
         tabla_rect = get_matrix_table_rect()
         if tablero is not None:
             draw_matrix_table(ventana, tabla_rect, tablero, changed_cells)

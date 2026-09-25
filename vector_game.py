@@ -6,12 +6,13 @@ elegir DOS que sumados den exactamente ese objetivo. Cada acierto refuerza la
 suma de vectores componente a componente; el bonus de ortogonalidad refuerza
 el producto punto. Comparte con matrix_game el mismo marco (panel derecho,
 cronómetro, habilidades cargables con preguntas, Zona de Estudio y Excel)."""
+import math
 import random
 import time
 import pygame
 
 from config import Config, font, font_small, font_large, NEGRO
-from ui import draw_right_panel, get_panel_buttons, draw_button, texto
+from ui import draw_right_panel, get_panel_buttons, draw_button, texto, draw_circle_aa, draw_ring_aa
 from learn_zone import mostrar_zona_estudio
 from excel_exporter import export_to_excel
 from quiz_system import pick_question
@@ -91,8 +92,8 @@ def _icono_vector(hid, lado=40):
         flecha(s, (c, c), (c + r, c - r), color=(255, 210, 90), grosor=4)
     else:  # radar
         for radio in (r, r * 0.65, r * 0.3):
-            pygame.draw.circle(s, (240, 240, 240), (c, c), int(radio), 1)
-        pygame.draw.circle(s, (255, 210, 90), (c, c), 3)
+            draw_ring_aa(s, (c, c), radio, 1, (240, 240, 240))
+        draw_circle_aa(s, (c, c), 3, (255, 210, 90))
     return s
 
 
@@ -375,23 +376,34 @@ def jugar(ventana, sound, tema_id='vectores'):
             escala = escala_plano()
             fin = punto_plano(objetivo, escala)
             pygame.draw.line(ventana, (233, 90, 64), (cx, cy), fin, 4)
-            pygame.draw.circle(ventana, (233, 90, 64), fin, 7)
+            draw_circle_aa(ventana, fin, 7, (233, 90, 64))
             ventana.blit(texto(font_small, f"Objetivo: {tuple(objetivo)}", (233, 90, 64)),
                          (PLANO_RECT.x + 10, PLANO_RECT.y + 8))
 
         def dibujar_chips():
             rects = rects_chips()
             radar_activo = radar_par and (time.time() - radar_t0) < DUR_RADAR
+            en_fallo = fase_combo == 'resultado' and not resultado_ok
+            t_fallo = (time.time() - resultado_t0) if en_fallo else 0.0
             for idx, (chip, rect) in enumerate(zip(chips, rects)):
                 seleccionado = idx in seleccionados
                 en_radar = radar_activo and idx in radar_par
-                base = (255, 226, 140) if en_radar else ((200, 230, 255) if seleccionado else (240, 236, 230))
+                if en_fallo and seleccionado:
+                    # Sacudida corta + tinte rojo: el error necesitaba señal
+                    # visual propia, no solo sonido y texto flotante.
+                    amortiguacion = max(0.0, 1 - t_fallo / DUR_RESULTADO)
+                    dx = int(5 * math.sin(t_fallo * 45) * amortiguacion)
+                    rect = rect.move(dx, 0)
+                    base, borde = (255, 205, 200), (200, 70, 60)
+                else:
+                    base = (255, 226, 140) if en_radar else ((200, 230, 255) if seleccionado else (240, 236, 230))
+                    borde = (255, 180, 40) if en_radar else ((60, 130, 210) if seleccionado else (190, 180, 170))
                 pygame.draw.rect(ventana, tuple(int(c * 0.7) for c in base), rect.move(0, 3), border_radius=12)
                 pygame.draw.rect(ventana, base, rect, border_radius=12)
-                borde = (255, 180, 40) if en_radar else ((60, 130, 210) if seleccionado else (190, 180, 170))
-                pygame.draw.rect(ventana, borde, rect, 3 if (seleccionado or en_radar) else 2, border_radius=12)
-                ventana.blit(texto(font, f"({chip[0]}, {chip[1]})", (35, 30, 25)),
-                             texto(font, f"({chip[0]}, {chip[1]})", (35, 30, 25)).get_rect(center=rect.center))
+                pygame.draw.rect(ventana, borde, rect, 3 if (seleccionado or en_radar or en_fallo) else 2,
+                                 border_radius=12)
+                etiqueta = texto(font, f"({chip[0]}, {chip[1]})", (35, 30, 25))
+                ventana.blit(etiqueta, etiqueta.get_rect(center=rect.center))
 
         def dibujar_barra_habilidades(mouse_pos):
             rects = rects_habilidades()
