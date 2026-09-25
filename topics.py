@@ -1,11 +1,13 @@
 # topics.py
 """Registro central de temas de álgebra lineal disponibles en el Hub.
 
-Cada tema reutiliza el mismo tablero tipo match-3, pero con su propio banco de
-preguntas (quiz_system) y su propia Zona de Estudio (learn_zone). Los temas
-marcados como no disponibles son el roadmap: se muestran en el Hub como
-"Próximamente" para que el plan de expansión sea visible dentro del juego.
+Cada tema es un "continente" de Matrixia (ver lore.py) con su propia mecánica
+de minijuego, su propio banco de preguntas (quiz_system) y su propia Zona de
+Estudio (learn_zone). Los temas marcados como no disponibles son el roadmap:
+se muestran en el Hub como "Próximamente" para que el plan de expansión sea
+visible dentro del juego.
 """
+from lore import CONTINENTES
 
 TEMAS = [
     {'id': 'matrices', 'nombre': 'Matrices', 'color': (233, 90, 64),
@@ -25,6 +27,11 @@ TEMAS = [
      'disponible': False},
 ]
 
+for _t in TEMAS:
+    _c = CONTINENTES.get(_t['id'], {})
+    _t['continente'] = _c.get('continente', _t['nombre'])
+    _t['guardian'] = _c.get('guardian', '')
+
 _POR_ID = {t['id']: t for t in TEMAS}
 
 
@@ -34,6 +41,12 @@ def tema(tema_id):
 
 def nombre(tema_id):
     return tema(tema_id)['nombre']
+
+
+def nombre_completo(tema_id):
+    """'Matricia — Matrices', para encabezados con sabor narrativo."""
+    t = tema(tema_id)
+    return f"{t['continente']} — {t['nombre']}"
 
 
 def disponible(tema_id):

@@ -19,8 +19,8 @@ def mostrar_hub_temas(ventana, tema_actual='matrices'):
     fondo = get_fondo_menu()
 
     cols = 3
-    card_w, card_h = 320, 190
-    gap_x, gap_y = 30, 26
+    card_w, card_h = 320, 204
+    gap_x, gap_y = 30, 24
     total_w = cols * card_w + (cols - 1) * gap_x
     x0 = (Config.ANCHO - total_w) // 2
     y0 = 250
@@ -54,9 +54,13 @@ def mostrar_hub_temas(ventana, tema_actual='matrices'):
             borde = (255, 226, 90) if t['id'] == tema_actual else (255, 255, 255)
             pygame.draw.rect(ventana, borde, rect, 3, border_radius=18)
 
-            ventana.blit(texto(font_large, t['nombre'], (255, 255, 255)), (rect.x + 18, rect.y + 16))
-            for i, linea in enumerate(_envolver(t['resumen'], 30)):
-                ventana.blit(texto(font_small, linea, (255, 255, 255)), (rect.x + 18, rect.y + 56 + i * 20))
+            ventana.blit(texto(font_small, t['continente'].upper(), (255, 245, 225)), (rect.x + 18, rect.y + 10))
+            ventana.blit(texto(font_large, t['nombre'], (255, 255, 255)), (rect.x + 18, rect.y + 30))
+            if t['guardian']:
+                ventana.blit(texto(font_small, f"Guardián: {t['guardian']}", (255, 236, 200)),
+                             (rect.x + 18, rect.y + 62))
+            for i, linea in enumerate(_envolver(t['resumen'], 30)[:2]):
+                ventana.blit(texto(font_small, linea, (255, 255, 255)), (rect.x + 18, rect.y + 86 + i * 20))
 
             if t['disponible']:
                 prog = progress.resumen(t['id'])

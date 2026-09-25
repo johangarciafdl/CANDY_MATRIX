@@ -7,7 +7,7 @@ Zona de Estudio y exportación a Excel."""
 import time
 import pygame
 
-from config import Config, font, font_large, NEGRO
+from config import Config, font, font_small, font_large, NEGRO, COLOR_MAP
 from matrix_logic import generar_tablero, son_adyacentes, matrix_stats
 from animations import BoardAnimator
 from fruits import get_fruit_sprite, precargar
@@ -18,6 +18,8 @@ from skills import (SistemaHabilidades, HABILIDADES, draw_barra, get_barra_rects
 from ui import (draw_right_panel, get_panel_buttons, get_fondo_juego, get_area_tablero,
                 draw_seleccion, draw_button)
 from topics import nombre as nombre_tema
+import lore
+import effects
 import progress
 
 OVERLAY_DURATION = 2.5
@@ -59,6 +61,8 @@ def jugar(ventana, sound, tema_id='matrices'):
     """Corre partidas de Matrices hasta que el jugador vuelve al menú o cierra
     el juego. Devuelve 'menu' o 'salir'."""
     clock = pygame.time.Clock()
+    effects.limpiar()
+    primera_vez = True
 
     while True:
         # ---------- Estado de una partida nueva ----------
@@ -86,6 +90,12 @@ def jugar(ventana, sound, tema_id='matrices'):
         tablero_pre_jugada = None
         changed_cells = set()
         changed_time = 0.0
+
+        if primera_vez:
+            frase_entrada = lore.frase(tema_id, 'entrada')
+            if frase_entrada:
+                aviso = {'texto': frase_entrada, 't0': time.time(), 'color': (60, 110, 170)}
+            primera_vez = False
 
         # ---------- Ayudantes que dependen del estado de esta partida ----------
         def agregar_flotante(texto_flotante, x, y, color=(255, 242, 170)):
@@ -210,6 +220,10 @@ def jugar(ventana, sound, tema_id='matrices'):
                     fila_media = sum(i for i, _ in celdas) / len(celdas)
                     col_media = sum(j for _, j in celdas) / len(celdas)
                     x, y = centro_de_celda(fila_media, col_media)
+                    primer_i, primer_j = next(iter(celdas))
+                    valor = tablero[primer_i][primer_j]
+                    if isinstance(valor, int) and 0 <= valor < len(COLOR_MAP):
+                        effects.spawn_burst(x, y, COLOR_MAP[valor], cantidad=8 + 3 * cascada)
                     if etiqueta_hab:
                         texto_flotante = f"{etiqueta_hab}  +{puntos}"
                     elif cascada == 1:
@@ -300,12 +314,15 @@ def jugar(ventana, sound, tema_id='matrices'):
                 capa.set_alpha(int(255 * (DUR_AVISO - t) / 0.7))
             ventana.blit(capa, rect.topleft)
 
-        def dibujar_texto_central(texto_central, sub=None):
+        def dibujar_texto_central(texto_central, sub=None, frase=None):
             render = font_large.render(texto_central, True, NEGRO)
             ventana.blit(render, render.get_rect(center=(Config.LEFT_WIDTH // 2, Config.ALTO // 2)))
             if sub:
                 render2 = font.render(sub, True, NEGRO)
                 ventana.blit(render2, render2.get_rect(center=(Config.LEFT_WIDTH // 2, Config.ALTO // 2 + 40)))
+            if frase:
+                render3 = font_small.render(f'{lore.continente(tema_id)["guardian"]}: "{frase}"', True, (80, 55, 30))
+                ventana.blit(render3, render3.get_rect(center=(Config.LEFT_WIDTH // 2, Config.ALTO // 2 + 74)))
 
         # ---------- Bucle de la partida ----------
         while running:
@@ -314,6 +331,7 @@ def jugar(ventana, sound, tema_id='matrices'):
             if estado_juego == "jugando" and score >= nivel_goal(level):
                 guardar_reporte()
                 sound.play('levelup')
+                effects.spawn_confetti(pygame.Rect(0, 0, Config.LEFT_WIDTH, 40))
                 estado_juego = "nivel_completo"
                 overlay_start = time.time()
             elif estado_juego == "jugando" and tiempo_restante <= 0:
@@ -393,6 +411,7 @@ def jugar(ventana, sound, tema_id='matrices'):
             dibujar_tablero()
             dibujar_previsualizacion()
             dibujar_flotantes()
+            effects.update_and_draw(ventana, 1.0 / Config.FPS)
             draw_barra(ventana, habilidades, habilidad_activa, pygame.mouse.get_pos())
             dibujar_aviso()
 
@@ -405,7 +424,8 @@ def jugar(ventana, sound, tema_id='matrices'):
                 overlay = pygame.Surface((Config.LEFT_WIDTH, Config.ALTO), pygame.SRCALPHA)
                 overlay.fill((10, 10, 10, 160))
                 ventana.blit(overlay, (0, 0))
-                dibujar_texto_central("¡Nivel superado!", f"Nivel {level} completado con {score} puntos")
+                dibujar_texto_central("¡Nivel superado!", f"Nivel {level} completado con {score} puntos",
+                                      frase=lore.frase(tema_id, 'nivel'))
 
                 if time.time() - overlay_start >= OVERLAY_DURATION:
                     tablero = generar_tablero()
@@ -429,7 +449,8 @@ def jugar(ventana, sound, tema_id='matrices'):
                 overlay.fill((10, 10, 10, 170))
                 ventana.blit(overlay, (0, 0))
                 dibujar_texto_central("¡Se acabó el tiempo!",
-                                      f"Nivel {level} — {score}/{nivel_goal(level)} puntos")
+                                      f"Nivel {level} — {score}/{nivel_goal(level)} puntos",
+                                      frase=lore.frase(tema_id, 'tiempo_agotado'))
 
                 mouse_pos = pygame.mouse.get_pos()
                 draw_button(ventana, BOTON_REINTENTAR, "Jugar de nuevo", mouse_pos,

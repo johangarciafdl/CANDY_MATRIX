@@ -19,6 +19,8 @@ from matrix_logic import generar_tablero
 from skills import SistemaHabilidades
 from topics import nombre as nombre_tema
 import progress
+import lore
+import effects
 
 OVERLAY_DURATION = 2.5
 DUR_FLOTANTE = 0.9
@@ -175,6 +177,8 @@ def jugar(ventana, sound, tema_id='vectores'):
     """Corre partidas de Cazavectores hasta que el jugador vuelve al menú o
     cierra el juego. Devuelve 'menu' o 'salir'."""
     clock = pygame.time.Clock()
+    effects.limpiar()
+    primera_vez = True
 
     while True:
         nivel = 1
@@ -207,6 +211,12 @@ def jugar(ventana, sound, tema_id='vectores'):
 
         estado_juego = "jugando"  # "jugando" | "nivel_completo" | "tiempo_agotado"
         overlay_start = 0.0
+
+        if primera_vez:
+            frase_entrada = lore.frase(tema_id, 'entrada')
+            if frase_entrada:
+                aviso = {'texto': frase_entrada, 't0': time.time(), 'color': (60, 110, 170)}
+            primera_vez = False
 
         def agregar_flotante(txt, x, y, color=(255, 242, 170)):
             flotantes.append({'texto': txt, 'x': x, 'y': y,
@@ -260,6 +270,8 @@ def jugar(ventana, sound, tema_id='vectores'):
                 puntos = 35 + 10 * racha + (20 if ortogonal else 0)
                 score += puntos
                 sound.play('explosion')
+                color_burst = (255, 200, 90) if ortogonal else (200, 255, 200)
+                effects.spawn_burst(cx, cy, color_burst, cantidad=10 + 2 * racha)
                 desc = f"u={tuple(u)} + v={tuple(v)} = {tuple(suma)} = objetivo (+{puntos} pts, racha x{racha})"
                 if ortogonal:
                     desc += " | ¡Bonus! u·v = 0: son ortogonales"
@@ -444,12 +456,15 @@ def jugar(ventana, sound, tema_id='vectores'):
                 capa.set_alpha(int(255 * (DUR_AVISO - t) / 0.7))
             ventana.blit(capa, rect.topleft)
 
-        def dibujar_texto_central(titulo, sub=None):
+        def dibujar_texto_central(titulo, sub=None, frase=None):
             render = font_large.render(titulo, True, NEGRO)
             ventana.blit(render, render.get_rect(center=(Config.LEFT_WIDTH // 2, Config.ALTO // 2)))
             if sub:
                 render2 = font.render(sub, True, NEGRO)
                 ventana.blit(render2, render2.get_rect(center=(Config.LEFT_WIDTH // 2, Config.ALTO // 2 + 40)))
+            if frase:
+                render3 = font_small.render(f'{lore.continente(tema_id)["guardian"]}: "{frase}"', True, (80, 55, 30))
+                ventana.blit(render3, render3.get_rect(center=(Config.LEFT_WIDTH // 2, Config.ALTO // 2 + 74)))
 
         # ---------- Bucle de la partida ----------
         while running:
@@ -462,6 +477,7 @@ def jugar(ventana, sound, tema_id='vectores'):
             if estado_juego == "jugando" and score >= nivel_goal(nivel):
                 guardar_reporte()
                 sound.play('levelup')
+                effects.spawn_confetti(pygame.Rect(0, 0, Config.LEFT_WIDTH, 40))
                 estado_juego = "nivel_completo"
                 overlay_start = time.time()
             elif estado_juego == "jugando" and tiempo_restante <= 0:
@@ -521,6 +537,7 @@ def jugar(ventana, sound, tema_id='vectores'):
             dibujar_chips()
             dibujar_barra_habilidades(pygame.mouse.get_pos())
             dibujar_flotantes()
+            effects.update_and_draw(ventana, 1.0 / Config.FPS)
             dibujar_aviso()
 
             draw_right_panel(ventana, nivel, score, intentos, tiempo_restante,
@@ -531,7 +548,8 @@ def jugar(ventana, sound, tema_id='vectores'):
                 overlay = pygame.Surface((Config.LEFT_WIDTH, Config.ALTO), pygame.SRCALPHA)
                 overlay.fill((10, 10, 10, 160))
                 ventana.blit(overlay, (0, 0))
-                dibujar_texto_central("¡Nivel superado!", f"Nivel {nivel} completado con {score} puntos")
+                dibujar_texto_central("¡Nivel superado!", f"Nivel {nivel} completado con {score} puntos",
+                                      frase=lore.frase(tema_id, 'nivel'))
 
                 if time.time() - overlay_start >= OVERLAY_DURATION:
                     nivel += 1
@@ -551,7 +569,8 @@ def jugar(ventana, sound, tema_id='vectores'):
                 overlay = pygame.Surface((Config.LEFT_WIDTH, Config.ALTO), pygame.SRCALPHA)
                 overlay.fill((10, 10, 10, 170))
                 ventana.blit(overlay, (0, 0))
-                dibujar_texto_central("¡Se acabó el tiempo!", f"Nivel {nivel} — {score}/{nivel_goal(nivel)} puntos")
+                dibujar_texto_central("¡Se acabó el tiempo!", f"Nivel {nivel} — {score}/{nivel_goal(nivel)} puntos",
+                                      frase=lore.frase(tema_id, 'tiempo_agotado'))
 
                 mouse_pos = pygame.mouse.get_pos()
                 draw_button(ventana, BOTON_REINTENTAR, "Jugar de nuevo", mouse_pos, (60, 150, 90), (80, 180, 110))
