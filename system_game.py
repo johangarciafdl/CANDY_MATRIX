@@ -22,6 +22,7 @@ from topics import nombre as nombre_tema
 import progress
 import lore
 import effects
+from boss import mostrar_boss
 
 OVERLAY_DURATION = 2.5
 DUR_FLOTANTE = 0.9
@@ -435,6 +436,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 guardar_reporte()
                 progress.registrar_resultado(estudiante, tema_id, nivel, score)
                 progress.desbloquear_nivel(estudiante, tema_id, nivel)
+                mostrar_boss(ventana, sound, nivel, nombre_tema(tema_id))
                 sound.play('levelup')
                 effects.spawn_confetti(pygame.Rect(0, 0, Config.LEFT_WIDTH, 40))
                 estado_juego = "modulo_completo" if nivel >= Config.MAX_LEVEL else "nivel_completo"
