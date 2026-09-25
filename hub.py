@@ -3,7 +3,9 @@
 
 Cada tarjeta es un tema de álgebra lineal. Los disponibles se pueden jugar ya
 mismo; los "Próximamente" quedan visibles para dejar claro el roadmap del
-proyecto sin bloquear al jugador con un menú vacío."""
+proyecto, pero avisan al pulsarlos en vez de no hacer nada (eso se sentía
+como un botón roto)."""
+import time
 import sys
 import pygame
 
@@ -12,8 +14,10 @@ from ui import draw_button, texto, get_fondo_menu
 from topics import TEMAS
 import progress
 
+DUR_AVISO = 2.4
 
-def mostrar_hub_temas(ventana, tema_actual='matrices'):
+
+def mostrar_hub_temas(ventana, estudiante, tema_actual='matrices'):
     """Devuelve el id del tema elegido, o None si el jugador pulsó 'Volver'."""
     clock = pygame.time.Clock()
     fondo = get_fondo_menu()
@@ -34,6 +38,7 @@ def mostrar_hub_temas(ventana, tema_actual='matrices'):
         rects[t['id']] = pygame.Rect(x, y, card_w, card_h)
 
     btn_volver = pygame.Rect(40, Config.ALTO - 76, 160, 50)
+    aviso = None
 
     while True:
         ventana.blit(fondo, (0, 0))
@@ -73,7 +78,7 @@ def mostrar_hub_temas(ventana, tema_actual='matrices'):
                 y += 19
 
             if t['disponible']:
-                prog = progress.resumen(t['id'])
+                prog = progress.resumen(estudiante, t['id'])
                 estado = (f"Mejor: Nivel {prog['mejor_nivel']} · {prog['mejor_puntaje']} pts"
                           if prog['mejor_nivel'] > 0 else "Aún sin jugar")
             else:
@@ -81,6 +86,16 @@ def mostrar_hub_temas(ventana, tema_actual='matrices'):
             ventana.blit(texto(font_small, estado, (255, 245, 225)), (rect.x + 18, rect.bottom - 28))
 
         draw_button(ventana, btn_volver, "Volver", mouse_pos, (150, 90, 70), (180, 115, 90), font_obj=font_small)
+
+        if aviso and time.time() - aviso['t0'] < DUR_AVISO:
+            contenido = font.render(aviso['texto'], True, (255, 255, 255))
+            caja = pygame.Rect(0, 0, contenido.get_width() + 44, 46)
+            caja.center = (Config.ANCHO // 2, 198)
+            capa = pygame.Surface(caja.size, pygame.SRCALPHA)
+            pygame.draw.rect(capa, (*aviso['color'], 235), capa.get_rect(), border_radius=13)
+            pygame.draw.rect(capa, (255, 255, 255, 235), capa.get_rect(), 2, border_radius=13)
+            capa.blit(contenido, contenido.get_rect(center=(caja.width // 2, caja.height // 2)))
+            ventana.blit(capa, caja.topleft)
 
         pygame.display.flip()
         clock.tick(Config.FPS)
@@ -93,8 +108,12 @@ def mostrar_hub_temas(ventana, tema_actual='matrices'):
                 if btn_volver.collidepoint(event.pos):
                     return None
                 for t in TEMAS:
-                    if t['disponible'] and rects[t['id']].collidepoint(event.pos):
-                        return t['id']
+                    if rects[t['id']].collidepoint(event.pos):
+                        if t['disponible']:
+                            return t['id']
+                        aviso = {'texto': f"{t['nombre']} todavía no está listo: ¡vuelve pronto!",
+                                'color': (150, 120, 40), 't0': time.time()}
+                        break
 
 
 def _envolver_px(fuente, texto_largo, max_width):

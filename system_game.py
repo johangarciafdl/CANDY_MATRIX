@@ -31,6 +31,7 @@ DUR_HINT = 3.0
 
 BOTON_REINTENTAR = pygame.Rect(Config.LEFT_WIDTH // 2 - 140, Config.ALTO // 2 + 40, 280, 60)
 BOTON_MENU = pygame.Rect(Config.LEFT_WIDTH // 2 - 140, Config.ALTO // 2 + 114, 280, 60)
+BOTON_MAPA = pygame.Rect(Config.LEFT_WIDTH // 2 - 140, Config.ALTO // 2 + 60, 280, 60)
 
 CARD_A = pygame.Rect(60, 130, Config.LEFT_WIDTH - 120, 90)
 CARD_B = pygame.Rect(60, 236, Config.LEFT_WIDTH - 120, 90)
@@ -153,7 +154,7 @@ def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
                     return elegida == pregunta['correct_idx'], time.time() - entrada
 
 
-def jugar(ventana, sound, tema_id='sistemas'):
+def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
     """Corre partidas de Cazaecuaciones hasta que el jugador vuelve al menú o
     cierra el juego. Devuelve 'menu' o 'salir'."""
     clock = pygame.time.Clock()
@@ -161,7 +162,7 @@ def jugar(ventana, sound, tema_id='sistemas'):
     primera_vez = True
 
     while True:
-        nivel = 1
+        nivel = nivel_inicial
         score = 0
         intentos = 0
         racha = 0
@@ -432,13 +433,15 @@ def jugar(ventana, sound, tema_id='sistemas'):
 
             if estado_juego == "jugando" and score >= nivel_goal(nivel):
                 guardar_reporte()
+                progress.registrar_resultado(estudiante, tema_id, nivel, score)
+                progress.desbloquear_nivel(estudiante, tema_id, nivel)
                 sound.play('levelup')
                 effects.spawn_confetti(pygame.Rect(0, 0, Config.LEFT_WIDTH, 40))
-                estado_juego = "nivel_completo"
+                estado_juego = "modulo_completo" if nivel >= Config.MAX_LEVEL else "nivel_completo"
                 overlay_start = time.time()
             elif estado_juego == "jugando" and tiempo_restante <= 0:
                 guardar_reporte()
-                progress.registrar_resultado(tema_id, nivel, score)
+                progress.registrar_resultado(estudiante, tema_id, nivel, score)
                 estado_juego = "tiempo_agotado"
                 overlay_start = time.time()
 
@@ -446,7 +449,7 @@ def jugar(ventana, sound, tema_id='sistemas'):
                 if event.type == pygame.QUIT:
                     if estado_juego == "jugando":
                         guardar_reporte()
-                        progress.registrar_resultado(tema_id, nivel, score)
+                        progress.registrar_resultado(estudiante, tema_id, nivel, score)
                     return 'salir'
 
                 elif event.type == pygame.MOUSEBUTTONDOWN and estado_juego == "jugando":
@@ -478,7 +481,7 @@ def jugar(ventana, sound, tema_id='sistemas'):
                             guardar_reporte(avisar=True)
                         elif botones["menu"].collidepoint(mx, my):
                             guardar_reporte()
-                            progress.registrar_resultado(tema_id, nivel, score)
+                            progress.registrar_resultado(estudiante, tema_id, nivel, score)
                             return 'menu'
 
                 elif event.type == pygame.KEYDOWN and estado_juego == "jugando":
@@ -490,6 +493,10 @@ def jugar(ventana, sound, tema_id='sistemas'):
                     if BOTON_REINTENTAR.collidepoint(mx, my):
                         running = False
                     elif BOTON_MENU.collidepoint(mx, my):
+                        return 'menu'
+
+                elif event.type == pygame.MOUSEBUTTONDOWN and estado_juego == "modulo_completo":
+                    if BOTON_MAPA.collidepoint(event.pos):
                         return 'menu'
 
             # ---------- Dibujo ----------
@@ -568,6 +575,16 @@ def jugar(ventana, sound, tema_id='sistemas'):
 
                 draw_button(ventana, BOTON_REINTENTAR, "Jugar de nuevo", mouse_pos, (60, 150, 90), (80, 180, 110))
                 draw_button(ventana, BOTON_MENU, "Menú principal", mouse_pos, (60, 110, 170), (90, 145, 200))
+
+            elif estado_juego == "modulo_completo":
+                overlay = pygame.Surface((Config.LEFT_WIDTH, Config.ALTO), pygame.SRCALPHA)
+                overlay.fill((10, 10, 10, 175))
+                ventana.blit(overlay, (0, 0))
+                dibujar_texto_central(f"¡{nombre_tema(tema_id)} completado!",
+                                      f"Superaste los {Config.MAX_LEVEL} niveles con {score} puntos",
+                                      frase=lore.frase(tema_id, 'nivel'))
+                draw_button(ventana, BOTON_MAPA, "Volver al mapa de niveles", mouse_pos,
+                           (60, 150, 90), (80, 180, 110))
 
             pygame.display.flip()
             clock.tick(Config.FPS)

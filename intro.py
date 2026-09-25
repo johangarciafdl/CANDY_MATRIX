@@ -24,6 +24,9 @@ DUR_SOMBRA = 2.0
 DUR_TITULO = 3.4
 TOTAL = DUR_FRAGMENTOS + DUR_FORMACION + DUR_COMPLETA + DUR_RUPTURA + DUR_SOMBRA + DUR_TITULO
 
+TITULO_STR = "CANDY MATRIX"
+LETRAS_POR_SEGUNDO = 14
+
 _CACHE_GLIFO = {}
 
 
@@ -76,11 +79,23 @@ def _dibujar_chispa(surface, cx, cy, t):
         surface.blit(capa, capa.get_rect(center=(cx, cy)))
 
 
-def mostrar_intro(ventana):
+def mostrar_intro(ventana, sound=None):
     """Corre la cinemática una sola vez, al arrancar el juego. Se puede saltar
-    con clic, tecla o ESC en cualquier momento."""
+    con clic, tecla o ESC en cualquier momento. `sound` es el SoundManager ya
+    creado (sin música de fondo todavía): cada beat de la historia dispara su
+    propio efecto, y el título suena letra por letra al aparecer."""
     clock = pygame.time.Clock()
     effects.limpiar()
+
+    def _play(nombre):
+        if sound:
+            sound.play(nombre)
+
+    sonido_matriz_hecho = False
+    sonido_ruptura_hecho = False
+    sonido_chispa_hecho = False
+    letras_reveladas = 0
+    sonido_final_hecho = False
 
     cx, cy = Config.ANCHO // 2, Config.ALTO // 2 - 20
     grid_w = GRID * CELDA
@@ -135,6 +150,9 @@ def mostrar_intro(ventana):
 
         elif t < DUR_FRAGMENTOS + DUR_FORMACION + DUR_COMPLETA:
             # ---------- Fase 3: la matriz central, completa ----------
+            if not sonido_matriz_hecho:
+                _play('chime')
+                sonido_matriz_hecho = True
             for f in fragmentos:
                 _dibujar_glifo(ventana, *f['destino'], f['valor'], 255)
             t_fase = t - (DUR_FRAGMENTOS + DUR_FORMACION)
@@ -143,6 +161,9 @@ def mostrar_intro(ventana):
 
         elif t < DUR_FRAGMENTOS + DUR_FORMACION + DUR_COMPLETA + DUR_RUPTURA:
             # ---------- Fase 4: la matriz se rompe hacia Matrixia ----------
+            if not sonido_ruptura_hecho:
+                _play('shatter')
+                sonido_ruptura_hecho = True
             t_fase = t - (DUR_FRAGMENTOS + DUR_FORMACION + DUR_COMPLETA)
             p = min(1.0, t_fase / DUR_RUPTURA)
             pe = _ease(p)
@@ -161,24 +182,38 @@ def mostrar_intro(ventana):
 
         elif t < DUR_FRAGMENTOS + DUR_FORMACION + DUR_COMPLETA + DUR_RUPTURA + DUR_SOMBRA:
             # ---------- Fase 5: la sombra y el Aprendiz de Matriz ----------
+            if not sonido_chispa_hecho:
+                _play('chime')
+                sonido_chispa_hecho = True
             t_fase = t - (DUR_FRAGMENTOS + DUR_FORMACION + DUR_COMPLETA + DUR_RUPTURA)
             _dibujar_chispa(ventana, cx, cy - 20, ahora)
             _texto_narrativo(ventana, "Ahora alguien tendrá que reconstruirla.", t_fase, DUR_SOMBRA)
 
         else:
-            # ---------- Fase 6: título ----------
+            # ---------- Fase 6: título, letra por letra y sincronizado con sonido ----------
             t_fase = t - (TOTAL - DUR_TITULO)
-            p = min(1.0, t_fase / 1.1)
-            titulo = font_title.render("CANDY MATRIX", True, (216, 52, 72))
-            titulo.set_alpha(int(255 * p))
+            n_visibles = min(len(TITULO_STR), int(t_fase * LETRAS_POR_SEGUNDO))
+            if n_visibles > letras_reveladas:
+                for idx in range(letras_reveladas, n_visibles):
+                    if TITULO_STR[idx] != ' ':
+                        _play('explosion')  # "pop" suave, una por letra
+                letras_reveladas = n_visibles
+
+            titulo = font_title.render(TITULO_STR[:n_visibles], True, (216, 52, 72))
             ventana.blit(titulo, titulo.get_rect(center=(cx, cy - 10)))
-            if t_fase > 1.0:
+
+            t_titulo_completo = len(TITULO_STR) / LETRAS_POR_SEGUNDO
+            if n_visibles >= len(TITULO_STR):
+                if not sonido_final_hecho:
+                    _play('levelup')
+                    sonido_final_hecho = True
+                t_desde_completo = t_fase - t_titulo_completo
                 sub = font.render("El conocimiento está en tus manos.", True, (230, 215, 205))
-                sub.set_alpha(int(255 * min(1.0, (t_fase - 1.0) / 0.8)))
+                sub.set_alpha(int(255 * min(1.0, max(0.0, t_desde_completo) / 0.7)))
                 ventana.blit(sub, sub.get_rect(center=(cx, cy + 44)))
-            if t_fase > 2.4:
-                aviso = font_small.render("Toca cualquier tecla para continuar", True, (150, 145, 150))
-                ventana.blit(aviso, aviso.get_rect(center=(cx, cy + 96)))
+                if t_fase > 2.4:
+                    aviso = font_small.render("Toca cualquier tecla para continuar", True, (150, 145, 150))
+                    ventana.blit(aviso, aviso.get_rect(center=(cx, cy + 96)))
 
         effects.update_and_draw(ventana, 1.0 / Config.FPS)
         pygame.display.flip()

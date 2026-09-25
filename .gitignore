@@ -24,3 +24,4 @@ _docx_review/
 
 # Progreso del jugador (datos locales de partidas, no código fuente)
 progreso_estudiante.json
+ultimo_estudiante.json

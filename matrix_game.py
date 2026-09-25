@@ -29,6 +29,7 @@ DUR_AVISO = 4.0
 
 BOTON_REINTENTAR = pygame.Rect(Config.LEFT_WIDTH // 2 - 140, Config.ALTO // 2 + 40, 280, 60)
 BOTON_MENU = pygame.Rect(Config.LEFT_WIDTH // 2 - 140, Config.ALTO // 2 + 114, 280, 60)
+BOTON_MAPA = pygame.Rect(Config.LEFT_WIDTH // 2 - 140, Config.ALTO // 2 + 60, 280, 60)
 
 _PREVIEW = pygame.Surface((Config.TAMANO_CELDA - 6, Config.TAMANO_CELDA - 6), pygame.SRCALPHA)
 pygame.draw.rect(_PREVIEW, (255, 255, 255, 110), _PREVIEW.get_rect(), border_radius=10)
@@ -57,7 +58,7 @@ def celda_desde_pixel(mx, my):
     return None
 
 
-def jugar(ventana, sound, tema_id='matrices'):
+def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
     """Corre partidas de Matrices hasta que el jugador vuelve al menú o cierra
     el juego. Devuelve 'menu' o 'salir'."""
     clock = pygame.time.Clock()
@@ -73,7 +74,7 @@ def jugar(ventana, sound, tema_id='matrices'):
         usos_habilidad = {h['id']: 0 for h in HABILIDADES}
 
         score = 0
-        level = 1
+        level = nivel_inicial
         moves_count = 0
         seleccionado = None
         arrastre_origen = None
@@ -330,13 +331,15 @@ def jugar(ventana, sound, tema_id='matrices'):
 
             if estado_juego == "jugando" and score >= nivel_goal(level):
                 guardar_reporte()
+                progress.registrar_resultado(estudiante, tema_id, level, score)
+                progress.desbloquear_nivel(estudiante, tema_id, level)
                 sound.play('levelup')
                 effects.spawn_confetti(pygame.Rect(0, 0, Config.LEFT_WIDTH, 40))
-                estado_juego = "nivel_completo"
+                estado_juego = "modulo_completo" if level >= Config.MAX_LEVEL else "nivel_completo"
                 overlay_start = time.time()
             elif estado_juego == "jugando" and tiempo_restante <= 0:
                 guardar_reporte()
-                progress.registrar_resultado(tema_id, level, score)
+                progress.registrar_resultado(estudiante, tema_id, level, score)
                 estado_juego = "tiempo_agotado"
                 overlay_start = time.time()
 
@@ -346,7 +349,7 @@ def jugar(ventana, sound, tema_id='matrices'):
                 if event.type == pygame.QUIT:
                     if estado_juego == "jugando":
                         guardar_reporte()
-                        progress.registrar_resultado(tema_id, level, score)
+                        progress.registrar_resultado(estudiante, tema_id, level, score)
                     return 'salir'
 
                 elif event.type == pygame.MOUSEBUTTONDOWN and estado_juego == "jugando":
@@ -385,7 +388,7 @@ def jugar(ventana, sound, tema_id='matrices'):
                             guardar_reporte(avisar=True)
                         elif botones["menu"].collidepoint(mx, my):
                             guardar_reporte()
-                            progress.registrar_resultado(tema_id, level, score)
+                            progress.registrar_resultado(estudiante, tema_id, level, score)
                             return 'menu'
 
                 elif event.type == pygame.MOUSEBUTTONUP and estado_juego == "jugando":
@@ -408,6 +411,10 @@ def jugar(ventana, sound, tema_id='matrices'):
                     if BOTON_REINTENTAR.collidepoint(mx, my):
                         running = False
                     elif BOTON_MENU.collidepoint(mx, my):
+                        return 'menu'
+
+                elif event.type == pygame.MOUSEBUTTONDOWN and estado_juego == "modulo_completo":
+                    if BOTON_MAPA.collidepoint(event.pos):
                         return 'menu'
 
             # ---------- Dibujo ----------
@@ -461,6 +468,16 @@ def jugar(ventana, sound, tema_id='matrices'):
                            (60, 150, 90), (80, 180, 110))
                 draw_button(ventana, BOTON_MENU, "Menú principal", mouse_pos,
                            (60, 110, 170), (90, 145, 200))
+
+            elif estado_juego == "modulo_completo":
+                overlay = pygame.Surface((Config.LEFT_WIDTH, Config.ALTO), pygame.SRCALPHA)
+                overlay.fill((10, 10, 10, 175))
+                ventana.blit(overlay, (0, 0))
+                dibujar_texto_central(f"¡{nombre_tema(tema_id)} completado!",
+                                      f"Superaste los {Config.MAX_LEVEL} niveles con {score} puntos",
+                                      frase=lore.frase(tema_id, 'nivel'))
+                draw_button(ventana, BOTON_MAPA, "Volver al mapa de niveles", pygame.mouse.get_pos(),
+                           (60, 150, 90), (80, 180, 110))
 
             pygame.display.flip()
             clock.tick(Config.FPS)
