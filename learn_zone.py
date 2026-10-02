@@ -1,4 +1,5 @@
 # learn_zone.py
+import asyncio
 import pygame, sys, time
 from config import Config, font, font_small, font_large
 from ui import draw_button
@@ -254,7 +255,7 @@ PAGE_VISUALS = {
 }
 
 
-def mostrar_zona_estudio(ventana, tablero=None, sound=None, tema_id='matrices'):
+async def mostrar_zona_estudio(ventana, tablero=None, sound=None, tema_id='matrices'):
     """Modal de estudio con dos pestañas: Teoría (slideshow) y Practicar (quiz interactivo)."""
     paginas = LEARN_PAGES.get(tema_id, LEARN_PAGES['matrices'])
     page = 0
@@ -418,6 +419,7 @@ def mostrar_zona_estudio(ventana, tablero=None, sound=None, tema_id='matrices'):
 
         pygame.display.flip()
         clock.tick(30)
+        await asyncio.sleep(0)
 
 
 def _wrap(text, max_len=78):

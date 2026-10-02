@@ -25,3 +25,6 @@ _docx_review/
 # Progreso del jugador (datos locales de partidas, no código fuente)
 progreso_estudiante.json
 ultimo_estudiante.json
+
+# Versión web generada por build_web.py (carpeta de staging + salida de pygbag)
+web/

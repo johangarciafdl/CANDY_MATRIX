@@ -6,6 +6,7 @@ elegir DOS que sumados den exactamente ese objetivo. Cada acierto refuerza la
 suma de vectores componente a componente; el bonus de ortogonalidad refuerza
 el producto punto. Comparte con matrix_game el mismo marco (panel derecho,
 cronómetro, habilidades cargables con preguntas, Zona de Estudio y Excel)."""
+import asyncio
 import math
 import random
 import time
@@ -100,7 +101,7 @@ def _icono_vector(hid, lado=40):
 
 
 # -------------------- MODAL DE PREGUNTA PARA CARGAR HABILIDAD --------------------
-def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
+async def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
     habilidad = _POR_ID_VEC[hid]
     tablero_fodder = generar_tablero()
     pregunta = pick_question(tablero_fodder, tema_id)
@@ -156,6 +157,7 @@ def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
 
         pygame.display.flip()
         clock.tick(30)
+        await asyncio.sleep(0)
 
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
@@ -176,7 +178,7 @@ def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
 
 
 # -------------------- JUEGO --------------------
-def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
+async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
     """Corre partidas de Cazavectores hasta que el jugador vuelve al menú o
     cierra el juego. Devuelve 'menu' o 'salir'."""
     clock = pygame.time.Clock()
@@ -321,7 +323,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 else:
                     mostrar_aviso("Ningún par de la bandeja suma el objetivo ahora mismo.", (150, 120, 40))
 
-        def manejar_click_habilidad(hid):
+        async def manejar_click_habilidad(hid):
             estado = habilidades.estado_de(hid)
             if estado == 'limite':
                 mostrar_aviso(f"Ya gastaste las {Config.MAX_SKILL_USES_PER_LEVEL} habilidades de este nivel.", (168, 58, 52))
@@ -331,7 +333,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
             elif estado == 'lista':
                 usar_habilidad(hid)
             else:
-                acierto, pausa = _preguntar_para_habilidad(ventana, sound, tema_id, hid)
+                acierto, pausa = await _preguntar_para_habilidad(ventana, sound, tema_id, hid)
                 pausar_reloj(pausa)
                 if acierto:
                     habilidades.otorgar(hid)
@@ -500,7 +502,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 guardar_reporte()
                 progress.registrar_resultado(estudiante, tema_id, nivel, score)
                 progress.desbloquear_nivel(estudiante, tema_id, nivel)
-                mostrar_boss(ventana, sound, nivel, nombre_tema(tema_id))
+                await mostrar_boss(ventana, sound, nivel, nombre_tema(tema_id))
                 sound.play('levelup')
                 effects.spawn_confetti(pygame.Rect(0, 0, Config.LEFT_WIDTH, 40))
                 estado_juego = "modulo_completo" if nivel >= Config.MAX_LEVEL else "nivel_completo"
@@ -524,7 +526,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                     rects_hab = rects_habilidades()
                     golpe_hab = next((hid for hid, r in rects_hab.items() if r.collidepoint(mx, my)), None)
                     if golpe_hab:
-                        manejar_click_habilidad(golpe_hab)
+                        await manejar_click_habilidad(golpe_hab)
                     elif mx < Config.LEFT_WIDTH and fase_combo == 'esperando':
                         for idx, rect in enumerate(rects_chips()):
                             if rect.collidepoint(mx, my):
@@ -538,7 +540,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                     elif mx >= Config.LEFT_WIDTH:
                         botones = get_panel_buttons()
                         if botones["estudio"].collidepoint(mx, my):
-                            pausar_reloj(mostrar_zona_estudio(ventana, generar_tablero(), sound, tema_id))
+                            pausar_reloj(await mostrar_zona_estudio(ventana, generar_tablero(), sound, tema_id))
                         elif botones["excel"].collidepoint(mx, my):
                             guardar_reporte(avisar=True)
                         elif botones["menu"].collidepoint(mx, my):
@@ -548,7 +550,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
 
                 elif event.type == pygame.KEYDOWN and estado_juego == "jugando":
                     if event.key == pygame.K_ESCAPE:
-                        pausar_reloj(mostrar_zona_estudio(ventana, generar_tablero(), sound, tema_id))
+                        pausar_reloj(await mostrar_zona_estudio(ventana, generar_tablero(), sound, tema_id))
 
                 elif event.type == pygame.MOUSEBUTTONDOWN and estado_juego == "tiempo_agotado":
                     mx, my = event.pos
@@ -621,3 +623,4 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
 
             pygame.display.flip()
             clock.tick(Config.FPS)
+            await asyncio.sleep(0)

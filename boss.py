@@ -5,6 +5,7 @@ esperar al capítulo final, aquí aparece cada vez que el jugador sube de
 nivel en cualquier tema: el juego se pausa y El Vacío se burla del progreso
 con una frase al azar, antes de dejar seguir. Más de 50 frases para que no
 se repita seguido en una sesión larga."""
+import asyncio
 import math
 import random
 import sys
@@ -124,7 +125,7 @@ def _dibujar_boss(surface, cx, cy, t, escala):
     surface.blit(cero, cero.get_rect(center=(cx, cy)))
 
 
-def mostrar_boss(ventana, sound, nivel_completado, tema_nombre):
+async def mostrar_boss(ventana, sound, nivel_completado, tema_nombre):
     """Modal bloqueante: pausa el juego y muestra a El Vacío burlándose del
     nivel recién superado. Vuelve cuando el jugador pulsa 'Continuar'."""
     clock = pygame.time.Clock()
@@ -175,3 +176,4 @@ def mostrar_boss(ventana, sound, nivel_completado, tema_nombre):
         effects.update_and_draw(ventana, 1.0 / Config.FPS)
         pygame.display.flip()
         clock.tick(Config.FPS)
+        await asyncio.sleep(0)

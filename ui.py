@@ -1,3 +1,4 @@
+import asyncio
 import pygame, pygame.gfxdraw, sys, math
 from config import Config, COLOR_MAP, BLANCO, font, font_small, font_large, font_title
 from fruits import get_fruit_sprite
@@ -22,7 +23,7 @@ def draw_ring_aa(surface, center, radio, grosor, color):
         pygame.gfxdraw.aacircle(surface, x, y, max(1, int(radio) + i), color)
 
 # -------------------- FUNCIONES DE ANIMACIÓN --------------------
-def fade_in(surface, color=(0, 0, 0), duration=500):
+async def fade_in(surface, color=(0, 0, 0), duration=500):
     """Efecto de aparición (fade in) suave."""
     fade = pygame.Surface((Config.ANCHO, Config.ALTO))
     fade.fill(color)
@@ -30,7 +31,7 @@ def fade_in(surface, color=(0, 0, 0), duration=500):
         fade.set_alpha(alpha)
         surface.blit(fade, (0, 0))
         pygame.display.flip()
-        pygame.time.delay(duration // 18)
+        await asyncio.sleep((duration // 18) / 1000)
 
 
 def lighten(color, factor=0.6):
@@ -226,14 +227,14 @@ _DECOR_MENU = [
 ]
 
 
-def mostrar_menu_inicio(ventana):
+async def mostrar_menu_inicio(ventana):
     """Pantalla de inicio: fondo horneado, frutas flotando y botones sin solapes."""
     clock = pygame.time.Clock()
     fondo = get_fondo_menu()
 
     ventana.blit(fondo, (0, 0))
     pygame.display.flip()
-    fade_in(ventana, (250, 214, 185))
+    await fade_in(ventana, (250, 214, 185))
 
     botones = {
         "comenzar": pygame.Rect(Config.ANCHO // 2 - 140, 300, 280, 62),
@@ -276,6 +277,7 @@ def mostrar_menu_inicio(ventana):
 
         pygame.display.flip()
         clock.tick(Config.FPS)
+        await asyncio.sleep(0)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

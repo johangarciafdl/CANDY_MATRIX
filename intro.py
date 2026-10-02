@@ -4,6 +4,7 @@ adaptado a texto en pantalla porque este proyecto no tiene actores de voz.
 Es 100% procedural (sin imágenes ni video): números que forman una matriz,
 la matriz se rompe en fragmentos hacia Matrixia, y el título aparece. Se
 puede saltar en cualquier momento con un clic, una tecla o ESC."""
+import asyncio
 import math
 import random
 import time
@@ -26,6 +27,12 @@ TOTAL = DUR_FRAGMENTOS + DUR_FORMACION + DUR_COMPLETA + DUR_RUPTURA + DUR_SOMBRA
 
 TITULO_STR = "CANDY MATRIX"
 LETRAS_POR_SEGUNDO = 14
+
+# Margen antes de permitir que un clic salte la cinemática. En el navegador el
+# juego no arranca hasta que el usuario toca la pantalla (lo exige el navegador
+# para poder reproducir audio), y ese mismo toque llega al canvas como un clic:
+# sin este margen la cinemática se saltaba sola en el celular.
+ESPERA_ANTES_DE_SALTAR = 0.8
 
 _CACHE_GLIFO = {}
 
@@ -79,7 +86,7 @@ def _dibujar_chispa(surface, cx, cy, t):
         surface.blit(capa, capa.get_rect(center=(cx, cy)))
 
 
-def mostrar_intro(ventana, sound=None):
+async def mostrar_intro(ventana, sound=None):
     """Corre la cinemática una sola vez, al arrancar el juego. Se puede saltar
     con clic, tecla o ESC en cualquier momento. `sound` es el SoundManager ya
     creado (sin música de fondo todavía): cada beat de la historia dispara su
@@ -115,6 +122,9 @@ def mostrar_intro(ventana, sound=None):
                 'estallo_hecho': False,
             })
 
+    # Descarta el toque/clic con el que el navegador arrancó el juego, que de
+    # otro modo quedaría en la cola y saltaría la cinemática en el primer frame.
+    pygame.event.clear()
     t0 = time.time()
 
     while True:
@@ -126,7 +136,8 @@ def mostrar_intro(ventana, sound=None):
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 raise SystemExit
-            if ev.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN):
+            if (t >= ESPERA_ANTES_DE_SALTAR
+                    and ev.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN)):
                 return
 
         ventana.fill((8, 8, 14))
@@ -218,3 +229,4 @@ def mostrar_intro(ventana, sound=None):
         effects.update_and_draw(ventana, 1.0 / Config.FPS)
         pygame.display.flip()
         clock.tick(Config.FPS)
+        await asyncio.sleep(0)

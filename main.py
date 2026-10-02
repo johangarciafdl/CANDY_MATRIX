@@ -1,4 +1,5 @@
-import pygame, sys
+import asyncio
+import pygame
 from config import Config
 from matrix_logic import generar_tablero
 from sound_manager import SoundManager
@@ -12,51 +13,63 @@ import matrix_game
 import vector_game
 import system_game
 
-# Inicialización
-pygame.init()
-ventana = pygame.display.set_mode((Config.ANCHO, Config.ALTO))
-pygame.display.set_caption("Candy Matrix - Proyecto Álgebra Lineal")
-
-sound = SoundManager(autoplay_music=False)
-
-mostrar_intro(ventana, sound)
-sound.iniciar_musica()
-estudiante = pedir_nombre(ventana)
-
 JUEGOS_POR_TEMA = {
     'matrices': matrix_game.jugar,
     'vectores': vector_game.jugar,
     'sistemas': system_game.jugar,
 }
 
-# -------------------- Bucle principal --------------------
-# Cada jugar(...) corre sus propias partidas (incluidos los "Jugar de nuevo")
-# hasta que el jugador pide el menú principal o cierra la ventana; por eso este
-# bucle solo se repite para volver a mostrar el menú, el Hub de temas y el
-# mapa de niveles.
 
-tema_actual = 'matrices'
+async def main():
+    """Punto de entrada único.
 
-while True:
-    inicio = mostrar_menu_inicio(ventana)
-    if not inicio:
-        break
+    Es asíncrono porque pygbag (la versión web del juego) corre sobre el bucle de
+    eventos del navegador: cada bucle de renderizado tiene que ceder el control
+    con `await asyncio.sleep(0)` o la pestaña se congela. En escritorio
+    `asyncio.run` se comporta igual que el código síncrono de antes.
+    """
+    # Inicialización
+    pygame.init()
+    ventana = pygame.display.set_mode((Config.ANCHO, Config.ALTO))
+    pygame.display.set_caption("Candy Matrix - Proyecto Álgebra Lineal")
 
-    tema_elegido = mostrar_hub_temas(ventana, estudiante, tema_actual)
-    if tema_elegido is None:
-        continue  # volvió del Hub sin elegir: mostrar el menú principal de nuevo
-    tema_actual = tema_elegido
+    sound = SoundManager(autoplay_music=False)
 
-    if inicio == "estudio":
-        mostrar_zona_estudio(ventana, generar_tablero(), sound, tema_actual)
+    await mostrar_intro(ventana, sound)
+    sound.iniciar_musica()
+    estudiante = await pedir_nombre(ventana)
 
-    nivel_elegido = mostrar_mapa_niveles(ventana, tema_actual, estudiante)
-    if nivel_elegido is None:
-        continue  # volvió del mapa de niveles sin elegir: al menú de nuevo
+    # -------------------- Bucle principal --------------------
+    # Cada jugar(...) corre sus propias partidas (incluidos los "Jugar de nuevo")
+    # hasta que el jugador pide el menú principal o cierra la ventana; por eso este
+    # bucle solo se repite para volver a mostrar el menú, el Hub de temas y el
+    # mapa de niveles.
 
-    jugar = JUEGOS_POR_TEMA[tema_actual]
-    if jugar(ventana, sound, tema_actual, estudiante, nivel_inicial=nivel_elegido) == 'salir':
-        break
+    tema_actual = 'matrices'
 
-pygame.quit()
-sys.exit()
+    while True:
+        inicio = await mostrar_menu_inicio(ventana)
+        if not inicio:
+            break
+
+        tema_elegido = await mostrar_hub_temas(ventana, estudiante, tema_actual)
+        if tema_elegido is None:
+            continue  # volvió del Hub sin elegir: mostrar el menú principal de nuevo
+        tema_actual = tema_elegido
+
+        if inicio == "estudio":
+            await mostrar_zona_estudio(ventana, generar_tablero(), sound, tema_actual)
+
+        nivel_elegido = await mostrar_mapa_niveles(ventana, tema_actual, estudiante)
+        if nivel_elegido is None:
+            continue  # volvió del mapa de niveles sin elegir: al menú de nuevo
+
+        jugar = JUEGOS_POR_TEMA[tema_actual]
+        if await jugar(ventana, sound, tema_actual, estudiante,
+                       nivel_inicial=nivel_elegido) == 'salir':
+            break
+
+    pygame.quit()
+
+
+asyncio.run(main())

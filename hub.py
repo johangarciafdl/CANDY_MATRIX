@@ -5,6 +5,7 @@ Cada tarjeta es un tema de álgebra lineal. Los disponibles se pueden jugar ya
 mismo; los "Próximamente" quedan visibles para dejar claro el roadmap del
 proyecto, pero avisan al pulsarlos en vez de no hacer nada (eso se sentía
 como un botón roto)."""
+import asyncio
 import time
 import sys
 import pygame
@@ -17,7 +18,7 @@ import progress
 DUR_AVISO = 2.4
 
 
-def mostrar_hub_temas(ventana, estudiante, tema_actual='matrices'):
+async def mostrar_hub_temas(ventana, estudiante, tema_actual='matrices'):
     """Devuelve el id del tema elegido, o None si el jugador pulsó 'Volver'."""
     clock = pygame.time.Clock()
     fondo = get_fondo_menu()
@@ -99,6 +100,7 @@ def mostrar_hub_temas(ventana, estudiante, tema_actual='matrices'):
 
         pygame.display.flip()
         clock.tick(Config.FPS)
+        await asyncio.sleep(0)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

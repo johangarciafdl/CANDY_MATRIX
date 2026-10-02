@@ -3,6 +3,7 @@
 es un nivel (1..Config.MAX_LEVEL); los que todavía no se desbloquean se ven
 apagados y no se pueden pulsar. Superar un nivel desbloquea el siguiente
 (progress.desbloquear_nivel, llamado desde cada minijuego)."""
+import asyncio
 import math
 import sys
 import pygame
@@ -25,7 +26,7 @@ def _estrella(surface, center, radio, color):
     pygame.draw.polygon(surface, color, pts)
 
 
-def mostrar_mapa_niveles(ventana, tema_id, estudiante):
+async def mostrar_mapa_niveles(ventana, tema_id, estudiante):
     """Devuelve el nivel elegido (int) para empezar a jugar, o None si el
     jugador pulsó 'Volver'."""
     clock = pygame.time.Clock()
@@ -97,6 +98,7 @@ def mostrar_mapa_niveles(ventana, tema_id, estudiante):
 
         pygame.display.flip()
         clock.tick(Config.FPS)
+        await asyncio.sleep(0)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

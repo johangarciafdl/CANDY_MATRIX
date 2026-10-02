@@ -4,6 +4,7 @@ tablero ES la matriz (cada fruta es a_ij). Vive en su propio módulo para que
 cada tema del Hub pueda tener una mecánica de juego distinta (ver vector_game.py)
 mientras comparten el mismo marco: panel derecho, cronómetro, habilidades,
 Zona de Estudio y exportación a Excel."""
+import asyncio
 import time
 import pygame
 
@@ -59,7 +60,7 @@ def celda_desde_pixel(mx, my):
     return None
 
 
-def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
+async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
     """Corre partidas de Matrices hasta que el jugador vuelve al menú o cierra
     el juego. Devuelve 'menu' o 'salir'."""
     clock = pygame.time.Clock()
@@ -149,7 +150,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 mostrar_aviso(error or "No se pudo exportar el Excel.", (168, 58, 52))
             return ruta
 
-        def manejar_click_habilidad(hid):
+        async def manejar_click_habilidad(hid):
             nonlocal habilidad_activa
             estado = habilidades.estado_de(hid)
 
@@ -164,7 +165,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 if habilidad_activa:
                     mostrar_aviso(f"{nombre_habilidad(hid)} lista: elige la celda del tablero.", (60, 110, 170))
             else:
-                acierto, pausa = preguntar_para_habilidad(ventana, tablero, hid, sound, tema_id)
+                acierto, pausa = await preguntar_para_habilidad(ventana, tablero, hid, sound, tema_id)
                 pausar_reloj(pausa)
                 if acierto:
                     habilidades.otorgar(hid)
@@ -334,7 +335,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 guardar_reporte()
                 progress.registrar_resultado(estudiante, tema_id, level, score)
                 progress.desbloquear_nivel(estudiante, tema_id, level)
-                mostrar_boss(ventana, sound, level, nombre_tema(tema_id))
+                await mostrar_boss(ventana, sound, level, nombre_tema(tema_id))
                 sound.play('levelup')
                 effects.spawn_confetti(pygame.Rect(0, 0, Config.LEFT_WIDTH, 40))
                 estado_juego = "modulo_completo" if level >= Config.MAX_LEVEL else "nivel_completo"
@@ -365,7 +366,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                     golpe_hab = next((hid for hid, r in rects_hab.items() if r.collidepoint(mx, my)), None)
 
                     if golpe_hab:
-                        manejar_click_habilidad(golpe_hab)
+                        await manejar_click_habilidad(golpe_hab)
 
                     elif mx < Config.LEFT_WIDTH:
                         celda = celda_desde_pixel(mx, my)
@@ -385,7 +386,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                     else:
                         botones = get_panel_buttons()
                         if botones["estudio"].collidepoint(mx, my):
-                            pausar_reloj(mostrar_zona_estudio(ventana, tablero, sound, tema_id))
+                            pausar_reloj(await mostrar_zona_estudio(ventana, tablero, sound, tema_id))
                         elif botones["excel"].collidepoint(mx, my):
                             guardar_reporte(avisar=True)
                         elif botones["menu"].collidepoint(mx, my):
@@ -406,7 +407,7 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                         if habilidad_activa:
                             habilidad_activa = None
                         else:
-                            pausar_reloj(mostrar_zona_estudio(ventana, tablero, sound, tema_id))
+                            pausar_reloj(await mostrar_zona_estudio(ventana, tablero, sound, tema_id))
 
                 elif event.type == pygame.MOUSEBUTTONDOWN and estado_juego == "tiempo_agotado":
                     mx, my = event.pos
@@ -483,3 +484,4 @@ def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
 
             pygame.display.flip()
             clock.tick(Config.FPS)
+            await asyncio.sleep(0)

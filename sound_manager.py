@@ -16,6 +16,18 @@ class SoundManager:
             self.iniciar_musica()
 
     def _sound_path(self, name):
+        """Devuelve la ruta del sonido prefiriendo .ogg sobre .wav.
+
+        En el navegador (pygbag) el mixer de SDL solo reproduce Ogg Vorbis de
+        forma fiable: .wav suele fallar o sonar cortado. En escritorio los dos
+        funcionan, asi que se busca primero el .ogg y se usa el .wav como
+        respaldo; de ese modo el mismo codigo sirve en ambas plataformas.
+        """
+        base, _ext = os.path.splitext(name)
+        for candidato in (base + '.ogg', name):
+            ruta = os.path.join(self.assets_base, candidato)
+            if os.path.exists(ruta):
+                return ruta
         return os.path.join(self.assets_base, name)
 
     def _load_sounds(self):
