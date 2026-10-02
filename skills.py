@@ -6,6 +6,7 @@ Cada habilidad traduce una idea de álgebra lineal a una acción en el tablero:
     Estrella -> fila y columna completas (operación elemental de fila/columna)
     Arcoíris -> todas las celdas con el mismo valor
 """
+import entrada
 import asyncio
 import math
 import time
@@ -244,7 +245,7 @@ async def preguntar_para_habilidad(ventana, tablero, hid, sound=None, tema_id='m
     elegida = None
 
     while True:
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = entrada.posicion_puntero()
         opciones_rects = []
 
         capa = pygame.Surface((Config.ANCHO, Config.ALTO), pygame.SRCALPHA)
@@ -294,7 +295,7 @@ async def preguntar_para_habilidad(ventana, tablero, hid, sound=None, tema_id='m
         clock.tick(30)
         await asyncio.sleep(0)
 
-        for ev in pygame.event.get():
+        for ev in entrada.obtener_eventos():
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 raise SystemExit

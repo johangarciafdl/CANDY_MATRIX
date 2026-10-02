@@ -6,6 +6,7 @@ multiplicador k tal que Fila B + k·Fila A elimine una incógnita — el paso
 central de la eliminación gaussiana, hecho jugable. Comparte con los otros
 temas el mismo marco: panel derecho, cronómetro, habilidades cargables con
 preguntas, Zona de Estudio y exportación a Excel."""
+import entrada
 import asyncio
 import math
 import random
@@ -94,7 +95,7 @@ async def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
     elegida = None
 
     while True:
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = entrada.posicion_puntero()
         opciones_rects = []
 
         capa = pygame.Surface((Config.ANCHO, Config.ALTO), pygame.SRCALPHA)
@@ -139,7 +140,7 @@ async def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
         clock.tick(30)
         await asyncio.sleep(0)
 
-        for ev in pygame.event.get():
+        for ev in entrada.obtener_eventos():
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 raise SystemExit
@@ -449,7 +450,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 estado_juego = "tiempo_agotado"
                 overlay_start = time.time()
 
-            for event in pygame.event.get():
+            for event in entrada.obtener_eventos():
                 if event.type == pygame.QUIT:
                     if estado_juego == "jugando":
                         guardar_reporte()
@@ -508,7 +509,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
             ventana.blit(texto(font_large, "Cazaecuaciones", (150, 90, 40)), (40, 60))
             ventana.blit(texto(font_small, "Encuentra el k que hace Fila B + k·Fila A elimine una incógnita.",
                                (110, 80, 50)), (40, 100))
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = entrada.posicion_puntero()
             dibujar_carta(CARD_A, fila_a, "A", fila_activa == 'a')
             dibujar_carta(CARD_B, fila_b, "B", fila_activa == 'b')
             dibujar_preview()

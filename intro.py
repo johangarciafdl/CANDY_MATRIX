@@ -4,6 +4,7 @@ adaptado a texto en pantalla porque este proyecto no tiene actores de voz.
 Es 100% procedural (sin imágenes ni video): números que forman una matriz,
 la matriz se rompe en fragmentos hacia Matrixia, y el título aparece. Se
 puede saltar en cualquier momento con un clic, una tecla o ESC."""
+import entrada
 import asyncio
 import math
 import random
@@ -132,7 +133,7 @@ async def mostrar_intro(ventana, sound=None):
         if t >= TOTAL:
             return
 
-        for ev in pygame.event.get():
+        for ev in entrada.obtener_eventos():
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 raise SystemExit

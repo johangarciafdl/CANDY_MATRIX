@@ -5,6 +5,7 @@ esperar al capítulo final, aquí aparece cada vez que el jugador sube de
 nivel en cualquier tema: el juego se pausa y El Vacío se burla del progreso
 con una frase al azar, antes de dejar seguir. Más de 50 frases para que no
 se repita seguido en una sesión larga."""
+import entrada
 import asyncio
 import math
 import random
@@ -144,8 +145,8 @@ async def mostrar_boss(ventana, sound, nivel_completado, tema_nombre):
         entrada = min(1.0, t / 0.6)
         escala = entrada * entrada * (3 - 2 * entrada)  # smoothstep
 
-        mouse_pos = pygame.mouse.get_pos()
-        for ev in pygame.event.get():
+        mouse_pos = entrada.posicion_puntero()
+        for ev in entrada.obtener_eventos():
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()

@@ -4,6 +4,7 @@ tablero ES la matriz (cada fruta es a_ij). Vive en su propio módulo para que
 cada tema del Hub pueda tener una mecánica de juego distinta (ver vector_game.py)
 mientras comparten el mismo marco: panel derecho, cronómetro, habilidades,
 Zona de Estudio y exportación a Excel."""
+import entrada
 import asyncio
 import time
 import pygame
@@ -274,7 +275,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
         def dibujar_previsualizacion():
             if not habilidad_activa or anim.ocupado():
                 return
-            celda = celda_desde_pixel(*pygame.mouse.get_pos())
+            celda = celda_desde_pixel(*entrada.posicion_puntero())
             if not celda:
                 return
             for (a, b) in celdas_afectadas(habilidad_activa, tablero, *celda):
@@ -348,7 +349,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
 
             procesar_eventos_animacion()
 
-            for event in pygame.event.get():
+            for event in entrada.obtener_eventos():
                 if event.type == pygame.QUIT:
                     if estado_juego == "jugando":
                         guardar_reporte()
@@ -426,7 +427,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
             dibujar_previsualizacion()
             dibujar_flotantes()
             effects.update_and_draw(ventana, 1.0 / Config.FPS)
-            draw_barra(ventana, habilidades, habilidad_activa, pygame.mouse.get_pos())
+            draw_barra(ventana, habilidades, habilidad_activa, entrada.posicion_puntero())
             dibujar_aviso()
 
             resaltado = changed_cells if (time.time() - changed_time) < CHANGE_HIGHLIGHT_DURATION else set()
@@ -466,7 +467,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                                       f"Nivel {level} — {score}/{nivel_goal(level)} puntos",
                                       frase=lore.frase(tema_id, 'tiempo_agotado'))
 
-                mouse_pos = pygame.mouse.get_pos()
+                mouse_pos = entrada.posicion_puntero()
                 draw_button(ventana, BOTON_REINTENTAR, "Jugar de nuevo", mouse_pos,
                            (60, 150, 90), (80, 180, 110))
                 draw_button(ventana, BOTON_MENU, "Menú principal", mouse_pos,
@@ -479,7 +480,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 dibujar_texto_central(f"¡{nombre_tema(tema_id)} completado!",
                                       f"Superaste los {Config.MAX_LEVEL} niveles con {score} puntos",
                                       frase=lore.frase(tema_id, 'nivel'))
-                draw_button(ventana, BOTON_MAPA, "Volver al mapa de niveles", pygame.mouse.get_pos(),
+                draw_button(ventana, BOTON_MAPA, "Volver al mapa de niveles", entrada.posicion_puntero(),
                            (60, 150, 90), (80, 180, 110))
 
             pygame.display.flip()

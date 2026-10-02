@@ -3,6 +3,7 @@
 mismo computador sin mezclar su progreso, porque cada nombre es una llave
 distinta dentro de progreso_estudiante.json (ver progress.py). Se muestra una
 sola vez al arrancar el juego, justo después del prólogo."""
+import entrada
 import asyncio
 import json
 import os
@@ -124,7 +125,7 @@ async def pedir_nombre(ventana):
             sub = font.render("Tu nombre guarda tu propio progreso en cada tema.", True, (86, 34, 24))
             ventana.blit(sub, sub.get_rect(center=(Config.ANCHO // 2, 280)))
 
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = entrada.posicion_puntero()
 
             pygame.draw.rect(ventana, (255, 255, 255), caja, border_radius=14)
             pygame.draw.rect(ventana, (206, 42, 62) if activo else (200, 190, 180), caja, 3, border_radius=14)
@@ -151,7 +152,7 @@ async def pedir_nombre(ventana):
             clock.tick(Config.FPS)
             await asyncio.sleep(0)
 
-            for ev in pygame.event.get():
+            for ev in entrada.obtener_eventos():
                 if ev.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()

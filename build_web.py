@@ -33,6 +33,7 @@ MODULOS = [
     "config.py",
     "matrix_logic.py",
     "sound_manager.py",
+    "entrada.py",
     "fruits.py",
     "animations.py",
     "effects.py",

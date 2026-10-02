@@ -1,4 +1,5 @@
 # learn_zone.py
+import entrada
 import asyncio
 import pygame, sys, time
 from config import Config, font, font_small, font_large
@@ -286,8 +287,8 @@ async def mostrar_zona_estudio(ventana, tablero=None, sound=None, tema_id='matri
         selected_idx = None
 
     while True:
-        mouse_pos = pygame.mouse.get_pos()
-        for ev in pygame.event.get():
+        mouse_pos = entrada.posicion_puntero()
+        for ev in entrada.obtener_eventos():
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()

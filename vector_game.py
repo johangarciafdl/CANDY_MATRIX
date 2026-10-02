@@ -6,6 +6,7 @@ elegir DOS que sumados den exactamente ese objetivo. Cada acierto refuerza la
 suma de vectores componente a componente; el bonus de ortogonalidad refuerza
 el producto punto. Comparte con matrix_game el mismo marco (panel derecho,
 cronómetro, habilidades cargables con preguntas, Zona de Estudio y Excel)."""
+import entrada
 import asyncio
 import math
 import random
@@ -114,7 +115,7 @@ async def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
     elegida = None
 
     while True:
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = entrada.posicion_puntero()
         opciones_rects = []
 
         capa = pygame.Surface((Config.ANCHO, Config.ALTO), pygame.SRCALPHA)
@@ -159,7 +160,7 @@ async def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
         clock.tick(30)
         await asyncio.sleep(0)
 
-        for ev in pygame.event.get():
+        for ev in entrada.obtener_eventos():
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 raise SystemExit
@@ -513,7 +514,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 estado_juego = "tiempo_agotado"
                 overlay_start = time.time()
 
-            for event in pygame.event.get():
+            for event in entrada.obtener_eventos():
                 if event.type == pygame.QUIT:
                     if estado_juego == "jugando":
                         guardar_reporte()
@@ -570,7 +571,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                                (110, 80, 50)), (40, 100))
             dibujar_plano()
             dibujar_chips()
-            dibujar_barra_habilidades(pygame.mouse.get_pos())
+            dibujar_barra_habilidades(entrada.posicion_puntero())
             dibujar_flotantes()
             effects.update_and_draw(ventana, 1.0 / Config.FPS)
             dibujar_aviso()
@@ -607,7 +608,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 dibujar_texto_central("¡Se acabó el tiempo!", f"Nivel {nivel} — {score}/{nivel_goal(nivel)} puntos",
                                       frase=lore.frase(tema_id, 'tiempo_agotado'))
 
-                mouse_pos = pygame.mouse.get_pos()
+                mouse_pos = entrada.posicion_puntero()
                 draw_button(ventana, BOTON_REINTENTAR, "Jugar de nuevo", mouse_pos, (60, 150, 90), (80, 180, 110))
                 draw_button(ventana, BOTON_MENU, "Menú principal", mouse_pos, (60, 110, 170), (90, 145, 200))
 
@@ -618,7 +619,7 @@ async def jugar(ventana, sound, tema_id, estudiante, nivel_inicial=1):
                 dibujar_texto_central(f"¡{nombre_tema(tema_id)} completado!",
                                       f"Superaste los {Config.MAX_LEVEL} niveles con {score} puntos",
                                       frase=lore.frase(tema_id, 'nivel'))
-                draw_button(ventana, BOTON_MAPA, "Volver al mapa de niveles", pygame.mouse.get_pos(),
+                draw_button(ventana, BOTON_MAPA, "Volver al mapa de niveles", entrada.posicion_puntero(),
                            (60, 150, 90), (80, 180, 110))
 
             pygame.display.flip()

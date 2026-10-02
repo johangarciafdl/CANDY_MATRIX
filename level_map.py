@@ -3,6 +3,7 @@
 es un nivel (1..Config.MAX_LEVEL); los que todavía no se desbloquean se ven
 apagados y no se pueden pulsar. Superar un nivel desbloquea el siguiente
 (progress.desbloquear_nivel, llamado desde cada minijuego)."""
+import entrada
 import asyncio
 import math
 import sys
@@ -53,7 +54,7 @@ async def mostrar_mapa_niveles(ventana, tema_id, estudiante):
         sub = font.render(f"{info['nombre']} · elige un nivel, {estudiante}", True, (86, 34, 24))
         ventana.blit(sub, sub.get_rect(center=(Config.ANCHO // 2, 168)))
 
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = entrada.posicion_puntero()
 
         if len(nodos) > 1:
             pygame.draw.line(ventana, (210, 190, 175), nodos[0].center, nodos[-1].center, 8)
@@ -100,7 +101,7 @@ async def mostrar_mapa_niveles(ventana, tema_id, estudiante):
         clock.tick(Config.FPS)
         await asyncio.sleep(0)
 
-        for event in pygame.event.get():
+        for event in entrada.obtener_eventos():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()

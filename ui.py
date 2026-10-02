@@ -1,3 +1,4 @@
+import entrada
 import asyncio
 import pygame, pygame.gfxdraw, sys, math
 from config import Config, COLOR_MAP, BLANCO, font, font_small, font_large, font_title
@@ -267,7 +268,7 @@ async def mostrar_menu_inicio(ventana):
         subtitulo = font.render("Aprende matrices jugando: álgebra lineal en modo Match-3", True, (86, 34, 24))
         ventana.blit(subtitulo, subtitulo.get_rect(center=(Config.ANCHO // 2, 215)))
 
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = entrada.posicion_puntero()
         for nombre, rect in botones.items():
             draw_button(ventana, rect, etiquetas[nombre], mouse_pos, (233, 90, 64), (247, 130, 95), font_obj=font_large)
 
@@ -279,7 +280,7 @@ async def mostrar_menu_inicio(ventana):
         clock.tick(Config.FPS)
         await asyncio.sleep(0)
 
-        for event in pygame.event.get():
+        for event in entrada.obtener_eventos():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
@@ -317,7 +318,7 @@ def draw_right_panel(ventana, level, score, moves, tiempo_restante, goal=None, t
     tiempo y botones. mostrar_matriz=False lo usan los minijuegos sin tablero de
     celdas (por ejemplo Vectores), que dibujan su propia visualización a la izquierda."""
     panel_x = Config.LEFT_WIDTH
-    mouse_pos = pygame.mouse.get_pos()
+    mouse_pos = entrada.posicion_puntero()
     pygame.draw.rect(ventana, (255, 245, 235), (panel_x, 0, Config.RIGHT_PANEL_WIDTH, Config.ALTO))
     pygame.draw.line(ventana, (215, 150, 120), (panel_x, 0), (panel_x, Config.ALTO), 4)
 
