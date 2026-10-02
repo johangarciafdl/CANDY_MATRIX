@@ -36,24 +36,48 @@ Lo que hay en `web/build/web/` son archivos estáticos: `index.html`,
 `web.apk`, `favicon.png`. Cualquier hosting estático gratuito funciona, y así no
 hace falta dejar la computadora prendida ni reenviar puertos.
 
-### GitHub Pages — recomendado
+### GitHub Pages — ya está publicado
 
-Es gratis, el link es permanente y ya tienes el repositorio.
+**El juego está en vivo aquí:**
 
-1. Compila: `.venv\Scripts\python build_web.py`
-2. Crea una rama solo para la web y copia ahí el contenido de `web/build/web/`:
+> ### https://johangarciafdl.github.io/CANDY_MATRIX/
 
-   ```bash
-   git checkout --orphan gh-pages
-   git rm -rf .
-   cp -r web/build/web/* .
-   git add index.html web.apk favicon.png
-   git commit -m "Publicar version web"
-   git push origin gh-pages
-   ```
+Se sirve desde la rama `gh-pages`, que contiene **solo lo que genera
+`build_web.py`**: `index.html`, `web.apk`, `favicon.png` y un `.nojekyll`. No se
+edita a mano — se regenera. El código fuente vive en `master`.
 
-3. En GitHub: *Settings → Pages → Source: branch `gh-pages`, carpeta `/`*.
-4. El link queda en `https://<tu-usuario>.github.io/<repositorio>/`.
+#### Volver a publicar después de un cambio
+
+Siempre hay que recompilar: la rama `gh-pages` guarda el resultado, no el
+código, así que un cambio en `master` no se refleja solo.
+
+```bash
+.venv\Scripts\python build_web.py          # 1. recompilar
+
+git worktree add --detach .tmp-deploy      # 2. copia de trabajo aparte,
+cd .tmp-deploy                             #    para no tocar tu carpeta
+git checkout gh-pages
+cp ../web/build/web/index.html ../web/build/web/web.apk ../web/build/web/favicon.png .
+git add -A
+git commit -m "Actualizar version web"
+git push origin gh-pages
+
+cd ..                                      # 3. limpiar
+git worktree remove .tmp-deploy
+```
+
+GitHub tarda un minuto largo en servir la versión nueva. Si ves la anterior,
+recarga forzando (Ctrl+F5, o en el celular borrando los datos del sitio).
+
+#### Una limitación que conviene conocer
+
+GitHub Pages no permite configurar cabeceras HTTP, así que no envía
+`Cross-Origin-Embedder-Policy`. pygbag funciona sin ella (va en modo de un solo
+hilo, sin `SharedArrayBuffer`), que es como corre este juego. Pero si algún día
+se añade algo que necesite hilos, Pages dejará de servir y habrá que mover el
+despliegue a itch.io, que sí tiene esa opción. El servidor local
+(`serve_web.py`) sí manda esas cabeceras, así que puede funcionar algo en local
+que falle en Pages: ante una diferencia rara entre los dos, sospecha de esto.
 
 ### itch.io — la alternativa más simple
 
