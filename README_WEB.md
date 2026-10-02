@@ -123,8 +123,37 @@ En escritorio no cambia nada: `asyncio.run(main())` se comporta igual que el
 código síncrono de antes, así que `python main.py` sigue funcionando como
 siempre.
 
-**Al agregar un minijuego o una pantalla nueva**, si tiene su propio bucle:
-hazla `async def`, pon `await asyncio.sleep(0)` dentro del bucle y `await` en
-quien la llame. `build_web.py` avisa si olvidas incluir un módulo, pero un
-`await` que falta no da error al compilar — el juego simplemente se congela en
-el navegador.
+## Por qué los eventos pasan por `entrada.py`
+
+En un celular SDL **no** entrega los toques como clics: manda `FINGERDOWN`,
+`FINGERUP` y `FINGERMOTION`, con las coordenadas entre 0 y 1 en vez de píxeles.
+Como el juego está escrito contra `MOUSEBUTTONDOWN` y `ev.pos`, sin traducirlos
+no responde absolutamente nada en el celular: ni los botones, ni el teclado en
+pantalla, ni el tablero.
+
+`entrada.py` hace esa traducción en el único punto por donde entran los eventos,
+así que el resto del código sigue hablando de clics:
+
+```python
+import entrada
+
+for ev in entrada.obtener_eventos():     # en vez de pygame.event.get()
+    ...
+mouse_pos = entrada.posicion_puntero()   # en vez de pygame.mouse.get_pos()
+```
+
+`posicion_puntero()` hace falta porque `pygame.mouse.get_pos()` no sigue al
+dedo: sin ella ningún botón se vería pulsado y el jugador no tendría señal de
+estar tocando el sitio correcto.
+
+## Al agregar una pantalla o un minijuego nuevo
+
+1. Si tiene su propio bucle, hazla `async def`, pon `await asyncio.sleep(0)`
+   dentro del bucle y `await` en quien la llame.
+2. Lee los eventos con `entrada.obtener_eventos()`, nunca con
+   `pygame.event.get()`.
+
+`build_web.py` comprueba las dos cosas que puede comprobar: que no falte ningún
+módulo y que nadie lea los eventos por su cuenta. Lo que **no** puede detectar
+es un `await` que falta — eso compila igual y el juego se congela en el
+navegador.

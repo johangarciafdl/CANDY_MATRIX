@@ -92,6 +92,31 @@ def verificar_dependencias():
     print("Dependencias verificadas: %d módulos, ninguno suelto" % len(MODULOS))
 
 
+def verificar_entrada():
+    """Nadie debe leer los eventos salteándose entrada.py.
+
+    En el celular SDL entrega los toques como FINGERDOWN, no como clics. El
+    módulo `entrada` los traduce, pero una pantalla nueva que llame directamente
+    a `pygame.event.get()` no recibiría ni un solo toque — y no daría ningún
+    error: simplemente no respondería nada, que es exactamente el síntoma que
+    costó encontrar la primera vez. Por eso se comprueba al compilar.
+    """
+    culpables = []
+    for modulo in MODULOS:
+        if modulo == "entrada.py":
+            continue  # es quien los lee de verdad
+        texto = open(os.path.join(RAIZ, modulo), encoding="utf-8").read()
+        for llamada in ("pygame.event.get(", "pygame.mouse.get_pos("):
+            if llamada in texto:
+                culpables.append("%s usa %s)" % (modulo, llamada))
+
+    if culpables:
+        sys.exit("Eventos sin traducir (el táctil no funcionará):\n  "
+                 + "\n  ".join(culpables)
+                 + "\nUsa entrada.obtener_eventos() y entrada.posicion_puntero().")
+    print("Entrada verificada: todo pasa por entrada.py")
+
+
 def preparar_staging():
     """Copia los módulos y los sonidos .ogg a una carpeta limpia."""
     if os.path.isdir(STAGING):
@@ -140,6 +165,7 @@ def main():
     args = ap.parse_args()
 
     verificar_dependencias()
+    verificar_entrada()
     preparar_staging()
     codigo = compilar(args.servir)
     if codigo == 0 and not args.servir:
