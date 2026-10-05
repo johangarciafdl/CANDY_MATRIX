@@ -12,6 +12,7 @@ import sys
 import pygame
 
 from config import Config, font, font_small, font_large, font_title
+from fuentes import fuente, TITULO_SUAVE
 from ui import draw_button, texto, get_fondo_menu
 from topics import TEMAS
 import progress
@@ -39,7 +40,7 @@ async def mostrar_hub_temas(ventana, estudiante, tema_actual='matrices'):
         y = y0 + fila * (card_h + gap_y)
         rects[t['id']] = pygame.Rect(x, y, card_w, card_h)
 
-    btn_volver = pygame.Rect(40, Config.ALTO - 76, 160, 50)
+    btn_volver = pygame.Rect(40, Config.ALTO - 84, 190, 56)
     aviso = None
 
     while True:
@@ -87,7 +88,9 @@ async def mostrar_hub_temas(ventana, estudiante, tema_actual='matrices'):
                 estado = "Próximamente"
             ventana.blit(texto(font_small, estado, (255, 245, 225)), (rect.x + 18, rect.bottom - 28))
 
-        draw_button(ventana, btn_volver, "Volver", mouse_pos, (150, 90, 70), (180, 115, 90), font_obj=font_small)
+        # Mismo botón "Volver" que el mapa de niveles: misma marca y mismo tamaño
+        draw_button(ventana, btn_volver, "Volver", mouse_pos, (160, 98, 76), (188, 124, 98),
+                    font_obj=fuente(TITULO_SUAVE, 24))
 
         if aviso and time.time() - aviso['t0'] < DUR_AVISO:
             contenido = font.render(aviso['texto'], True, (255, 255, 255))

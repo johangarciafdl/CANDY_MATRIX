@@ -3,6 +3,7 @@ import entrada
 import asyncio
 import pygame, sys, time
 from config import Config, font, font_small, font_large
+from luces import multiplicar_todo
 from ui import draw_button
 from quiz_system import pick_question
 from topics import nombre as nombre_tema
@@ -268,6 +269,13 @@ async def mostrar_zona_estudio(ventana, tablero=None, sound=None, tema_id='matri
     clock = pygame.time.Clock()
     tiempo_entrada = time.time()
 
+    # Lo que había en pantalla (el menú, el Hub o la partida) queda detrás,
+    # congelado y oscurecido una sola vez. Antes se pegaba una capa negra al 75 %
+    # en cada fotograma SIN redibujar el fondo: cada fotograma oscurecía al
+    # anterior y en ~0,2 s el fondo terminaba negro del todo.
+    fondo = ventana.copy()
+    multiplicar_todo(fondo, (78, 66, 80))
+
     w, h = 940, 560
     rx = (Config.ANCHO - w) // 2
     ry = (Config.ALTO - h) // 2
@@ -333,14 +341,13 @@ async def mostrar_zona_estudio(ventana, tablero=None, sound=None, tema_id='matri
                             nueva_pregunta()
 
         # ---------- Fondo oscurecido ----------
-        s = pygame.Surface((Config.ANCHO, Config.ALTO), pygame.SRCALPHA)
-        s.fill((10, 10, 10, 190))
-        ventana.blit(s, (0, 0))
+        ventana.blit(fondo, (0, 0))
+        pygame.draw.rect(ventana, (30, 20, 34), rect.move(0, 8), border_radius=16)
 
         pygame.draw.rect(ventana, (247, 247, 253), rect, border_radius=16)
         pygame.draw.rect(ventana, (200, 200, 200), rect, 2, border_radius=16)
 
-        ventana.blit(font_small.render(f'Tema: {nombre_tema(tema_id)}', True, (120, 90, 60)), (rect.x + 24, rect.y - 22))
+        ventana.blit(font_small.render(f'Tema: {nombre_tema(tema_id)}', True, (236, 222, 214)), (rect.x + 24, rect.y - 24))
 
         # ---------- Pestañas ----------
         draw_button(ventana, tab_teoria, "Teoría", mouse_pos,
