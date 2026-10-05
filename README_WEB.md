@@ -48,23 +48,14 @@ edita a mano — se regenera. El código fuente vive en `master`.
 
 #### Volver a publicar después de un cambio
 
-Siempre hay que recompilar: la rama `gh-pages` guarda el resultado, no el
-código, así que un cambio en `master` no se refleja solo.
-
-```bash
-.venv\Scripts\python build_web.py          # 1. recompilar
-
-git worktree add --detach .tmp-deploy      # 2. copia de trabajo aparte,
-cd .tmp-deploy                             #    para no tocar tu carpeta
-git checkout gh-pages
-cp ../web/build/web/index.html ../web/build/web/web.apk ../web/build/web/favicon.png .
-git add -A
-git commit -m "Actualizar version web"
-git push origin gh-pages
-
-cd ..                                      # 3. limpiar
-git worktree remove .tmp-deploy
+```bat
+.venv\Scripts\python deploy_web.py
 ```
+
+Compila (con todas las verificaciones de `build_web.py`) y sube el resultado a
+`gh-pages`. Trabaja en un `git worktree` temporal, así que tu carpeta nunca
+cambia de rama. Hay que hacerlo tras cada cambio: la rama `gh-pages` guarda el
+resultado, no el código, y un commit en `master` no cambia el sitio por sí solo.
 
 GitHub tarda un minuto largo en servir la versión nueva. Si ves la anterior,
 recarga forzando (Ctrl+F5, o en el celular borrando los datos del sitio).
