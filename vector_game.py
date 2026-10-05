@@ -106,7 +106,7 @@ async def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
     habilidad = _POR_ID_VEC[hid]
     tablero_fodder = generar_tablero()
     pregunta = pick_question(tablero_fodder, tema_id)
-    entrada = time.time()
+    inicio = time.time()
     clock = pygame.time.Clock()
 
     ancho, alto = 760, 420
@@ -165,7 +165,7 @@ async def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
                 pygame.quit()
                 raise SystemExit
             if ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE and fase == 'pregunta':
-                return False, time.time() - entrada
+                return False, time.time() - inicio
             if ev.type == pygame.MOUSEBUTTONDOWN:
                 if fase == 'pregunta':
                     for idx, opt_rect in enumerate(opciones_rects):
@@ -175,7 +175,7 @@ async def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
                             if sound:
                                 sound.play('correct' if idx == pregunta['correct_idx'] else 'error')
                 elif boton_cerrar and boton_cerrar.collidepoint(ev.pos):
-                    return elegida == pregunta['correct_idx'], time.time() - entrada
+                    return elegida == pregunta['correct_idx'], time.time() - inicio
 
 
 # -------------------- JUEGO --------------------

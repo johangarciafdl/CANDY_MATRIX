@@ -236,7 +236,7 @@ async def preguntar_para_habilidad(ventana, tablero, hid, sound=None, tema_id='m
     """Pregunta para ganar la habilidad. Devuelve (acertó, segundos_de_pausa)."""
     habilidad = _POR_ID[hid]
     pregunta = pick_question(tablero, tema_id)
-    entrada = time.time()
+    inicio = time.time()
     clock = pygame.time.Clock()
 
     ancho, alto = 760, 460
@@ -300,7 +300,7 @@ async def preguntar_para_habilidad(ventana, tablero, hid, sound=None, tema_id='m
                 pygame.quit()
                 raise SystemExit
             if ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE and fase == 'pregunta':
-                return False, time.time() - entrada
+                return False, time.time() - inicio
             if ev.type == pygame.MOUSEBUTTONDOWN:
                 if fase == 'pregunta':
                     for idx, opt_rect in enumerate(opciones_rects):
@@ -310,7 +310,7 @@ async def preguntar_para_habilidad(ventana, tablero, hid, sound=None, tema_id='m
                             if sound:
                                 sound.play('correct' if idx == pregunta['correct_idx'] else 'error')
                 elif boton_cerrar and boton_cerrar.collidepoint(ev.pos):
-                    return elegida == pregunta['correct_idx'], time.time() - entrada
+                    return elegida == pregunta['correct_idx'], time.time() - inicio
 
 
 def _envolver(texto_largo, max_len=68):

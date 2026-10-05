@@ -117,6 +117,42 @@ def verificar_entrada():
     print("Entrada verificada: todo pasa por entrada.py")
 
 
+def verificar_sombras():
+    """Ninguna variable puede llamarse igual que un módulo del proyecto importado.
+
+    Pasó de verdad: `skills.py` hacía `import entrada` y, dentro del modal de
+    pregunta, `entrada = time.time()`. A partir de esa línea `entrada` ya era un
+    número, `entrada.obtener_eventos()` reventaba con AttributeError y ninguna
+    habilidad se podía cargar. Python no avisa al importar ni al compilar: el
+    error solo aparece al abrir esa pantalla concreta. Se comprueba aquí con el
+    árbol sintáctico, que no necesita ejecutar nada.
+    """
+    import ast
+
+    propios = {os.path.splitext(m)[0] for m in MODULOS}
+    culpables = []
+
+    for modulo in MODULOS:
+        arbol = ast.parse(open(os.path.join(RAIZ, modulo), encoding="utf-8").read(), modulo)
+        importados = set()
+        for nodo in arbol.body:
+            if isinstance(nodo, ast.Import):
+                importados |= {a.asname or a.name for a in nodo.names if a.name in propios}
+
+        for nodo in ast.walk(arbol):
+            if isinstance(nodo, ast.Name) and isinstance(nodo.ctx, ast.Store) and nodo.id in importados:
+                culpables.append("%s:%d asigna a `%s`, que es un módulo importado"
+                                 % (modulo, nodo.lineno, nodo.id))
+            elif isinstance(nodo, ast.arg) and nodo.arg in importados:
+                culpables.append("%s:%d tiene un parámetro llamado `%s`, que es un módulo importado"
+                                 % (modulo, nodo.lineno, nodo.arg))
+
+    if culpables:
+        sys.exit("Variables que tapan un módulo (fallarán al ejecutarse):\n  "
+                 + "\n  ".join(culpables))
+    print("Nombres verificados: ninguna variable tapa un módulo importado")
+
+
 def preparar_staging():
     """Copia los módulos y los sonidos .ogg a una carpeta limpia."""
     if os.path.isdir(STAGING):
@@ -166,6 +202,7 @@ def main():
 
     verificar_dependencias()
     verificar_entrada()
+    verificar_sombras()
     preparar_staging()
     codigo = compilar(args.servir)
     if codigo == 0 and not args.servir:

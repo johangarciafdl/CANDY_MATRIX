@@ -142,17 +142,17 @@ async def mostrar_boss(ventana, sound, nivel_completado, tema_nombre):
 
     while True:
         t = pygame.time.get_ticks() / 1000.0 - t0
-        entrada = min(1.0, t / 0.6)
-        escala = entrada * entrada * (3 - 2 * entrada)  # smoothstep
+        aparicion = min(1.0, t / 0.6)
+        escala = aparicion * aparicion * (3 - 2 * aparicion)  # smoothstep
 
         mouse_pos = entrada.posicion_puntero()
         for ev in entrada.obtener_eventos():
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            elif entrada >= 1.0 and ev.type == pygame.MOUSEBUTTONDOWN and boton.collidepoint(ev.pos):
+            elif aparicion >= 1.0 and ev.type == pygame.MOUSEBUTTONDOWN and boton.collidepoint(ev.pos):
                 return
-            elif entrada >= 1.0 and ev.type == pygame.KEYDOWN and ev.key in (
+            elif aparicion >= 1.0 and ev.type == pygame.KEYDOWN and ev.key in (
                     pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE, pygame.K_ESCAPE):
                 return
 
@@ -161,10 +161,10 @@ async def mostrar_boss(ventana, sound, nivel_completado, tema_nombre):
 
         etiqueta = texto(font, f"El Vacío — Nivel {nivel_completado} de {tema_nombre} superado",
                          (150, 120, 125))
-        etiqueta.set_alpha(int(255 * entrada))
+        etiqueta.set_alpha(int(255 * aparicion))
         ventana.blit(etiqueta, etiqueta.get_rect(center=(Config.ANCHO // 2, caja.y - 22)))
 
-        if entrada >= 1.0:
+        if aparicion >= 1.0:
             pygame.draw.rect(ventana, (24, 18, 26), caja, border_radius=16)
             pygame.draw.rect(ventana, (90, 30, 40), caja, 2, border_radius=16)
             y = caja.centery - (len(lineas) * 17)
