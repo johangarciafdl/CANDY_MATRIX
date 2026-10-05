@@ -35,6 +35,7 @@ MODULOS = [
     "sound_manager.py",
     "entrada.py",
     "fuentes.py",
+    "luces.py",
     "fruits.py",
     "animations.py",
     "effects.py",
