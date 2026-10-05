@@ -3,6 +3,10 @@ import asyncio
 import pygame, pygame.gfxdraw, sys, math
 from config import Config, COLOR_MAP, BLANCO, font, font_small, font_large, font_title
 from fruits import get_fruit_sprite
+from marca import titulo as titulo_caramelo
+
+# En el navegador (pygbag) sys.platform es "emscripten".
+EN_NAVEGADOR = sys.platform == "emscripten"
 
 
 # -------------------- PRIMITIVAS CON ANTIALIASING --------------------
@@ -237,11 +241,12 @@ async def mostrar_menu_inicio(ventana):
     pygame.display.flip()
     await fade_in(ventana, (250, 214, 185))
 
-    botones = {
-        "comenzar": pygame.Rect(Config.ANCHO // 2 - 140, 300, 280, 62),
-        "estudio": pygame.Rect(Config.ANCHO // 2 - 140, 382, 280, 62),
-        "salir": pygame.Rect(Config.ANCHO // 2 - 140, 464, 280, 62),
-    }
+    # En el navegador no hay ventana que cerrar: "Salir" detendría pygame
+    # dentro de la pestaña y dejaría la pantalla en negro. Solo en escritorio.
+    nombres = ["comenzar", "estudio"] + ([] if EN_NAVEGADOR else ["salir"])
+    botones = {nombre: pygame.Rect(Config.ANCHO // 2 - 150, 312 + i * 84, 300, 64)
+               for i, nombre in enumerate(nombres)}
+    logo = titulo_caramelo(84)
     etiquetas = {
         "comenzar": "Comenzar Juego",
         "estudio": "Zona de Estudio",
@@ -260,21 +265,24 @@ async def mostrar_menu_inicio(ventana):
             y = dy + 10 * math.sin(t + indice * 0.7)
             ventana.blit(sprite, sprite.get_rect(center=(dx, int(y))))
 
-        titulo = font_title.render("CANDY MATRIX", True, (206, 42, 62))
-        sombra = font_title.render("CANDY MATRIX", True, (112, 16, 28))
-        ventana.blit(sombra, sombra.get_rect(center=(Config.ANCHO // 2 + 3, 153)))
-        ventana.blit(titulo, titulo.get_rect(center=(Config.ANCHO // 2, 150)))
+        # El mismo logotipo de caramelo que cierra la cinemática (marca.py)
+        flota = 4 * math.sin(pygame.time.get_ticks() / 900.0)
+        ventana.blit(logo, logo.get_rect(center=(Config.ANCHO // 2, 148 + flota)))
 
-        subtitulo = font.render("Aprende matrices jugando: álgebra lineal en modo Match-3", True, (86, 34, 24))
-        ventana.blit(subtitulo, subtitulo.get_rect(center=(Config.ANCHO // 2, 215)))
+        subtitulo = texto(font_large, "Álgebra lineal jugando", (120, 40, 34))
+        ventana.blit(subtitulo, subtitulo.get_rect(center=(Config.ANCHO // 2, 232)))
+        temas = texto(font, "Matrices  ·  Vectores  ·  Sistemas de ecuaciones", (138, 78, 62))
+        ventana.blit(temas, temas.get_rect(center=(Config.ANCHO // 2, 268)))
 
         mouse_pos = entrada.posicion_puntero()
         for nombre, rect in botones.items():
-            draw_button(ventana, rect, etiquetas[nombre], mouse_pos, (233, 90, 64), (247, 130, 95), font_obj=font_large)
+            principal = nombre == "comenzar"
+            base, hover = ((233, 90, 64), (247, 130, 95)) if principal else ((206, 120, 96), (226, 150, 124))
+            draw_button(ventana, rect, etiquetas[nombre], mouse_pos, base, hover, font_obj=font_large)
 
-        ayuda = font_small.render("Intercambia frutas vecinas para alinear 3 o más. ESC abre la Zona de Estudio.",
-                                  True, (112, 68, 56))
-        ventana.blit(ayuda, ayuda.get_rect(center=(Config.ANCHO // 2, 570)))
+        ultimo = list(botones.values())[-1]
+        ayuda = texto(font, "Elige un tema, supera sus niveles y enfrenta a El Vacío.", (120, 72, 58))
+        ventana.blit(ayuda, ayuda.get_rect(center=(Config.ANCHO // 2, ultimo.bottom + 48)))
 
         pygame.display.flip()
         clock.tick(Config.FPS)
@@ -289,7 +297,7 @@ async def mostrar_menu_inicio(ventana):
                     return "comenzar"
                 elif botones["estudio"].collidepoint(event.pos):
                     return "estudio"
-                elif botones["salir"].collidepoint(event.pos):
+                elif "salir" in botones and botones["salir"].collidepoint(event.pos):
                     pygame.quit()
                     sys.exit()
 

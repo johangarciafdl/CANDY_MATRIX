@@ -19,7 +19,7 @@ from learn_zone import mostrar_zona_estudio
 from excel_exporter import export_to_excel
 from quiz_system import pick_question
 from matrix_logic import generar_tablero
-from skills import SistemaHabilidades
+from skills import SistemaHabilidades, modal_pregunta
 from topics import nombre as nombre_tema
 import progress
 import lore
@@ -103,79 +103,11 @@ def _icono_vector(hid, lado=40):
 
 # -------------------- MODAL DE PREGUNTA PARA CARGAR HABILIDAD --------------------
 async def _preguntar_para_habilidad(ventana, sound, tema_id, hid):
-    habilidad = _POR_ID_VEC[hid]
-    tablero_fodder = generar_tablero()
-    pregunta = pick_question(tablero_fodder, tema_id)
-    inicio = time.time()
-    clock = pygame.time.Clock()
-
-    ancho, alto = 760, 420
-    rect = pygame.Rect((Config.ANCHO - ancho) // 2, (Config.ALTO - alto) // 2, ancho, alto)
-    fase = 'pregunta'
-    elegida = None
-
-    while True:
-        mouse_pos = entrada.posicion_puntero()
-        opciones_rects = []
-
-        capa = pygame.Surface((Config.ANCHO, Config.ALTO), pygame.SRCALPHA)
-        capa.fill((10, 10, 10, 195))
-        ventana.blit(capa, (0, 0))
-
-        pygame.draw.rect(ventana, (250, 248, 252), rect, border_radius=18)
-        pygame.draw.rect(ventana, habilidad['color'], rect, 5, border_radius=18)
-
-        icono = _icono_vector(hid, 54)
-        ventana.blit(icono, icono.get_rect(center=(rect.x + 52, rect.y + 48)))
-        ventana.blit(texto(font_large, f"Habilidad: {habilidad['nombre']}", habilidad['color']), (rect.x + 92, rect.y + 26))
-        ventana.blit(texto(font_small, habilidad['desc'], (70, 60, 60)), (rect.x + 92, rect.y + 60))
-
-        y = rect.y + 108
-        for linea in pregunta['lines']:
-            ventana.blit(texto(font_large, linea, (25, 25, 30)), (rect.x + 28, y))
-            y += 32
-
-        y += 12
-        for idx, opcion in enumerate(pregunta['options']):
-            opt_rect = pygame.Rect(rect.x + 40, y, rect.width - 80, 46)
-            opciones_rects.append(opt_rect)
-            base, hov = (232, 228, 242), (216, 212, 236)
-            if fase == 'feedback':
-                if idx == pregunta['correct_idx']:
-                    base = hov = (168, 220, 168)
-                elif idx == elegida:
-                    base = hov = (232, 158, 158)
-            draw_button(ventana, opt_rect, opcion, mouse_pos, base, hov, text_color=(25, 25, 30))
-            y += 54
-
-        boton_cerrar = None
-        if fase == 'feedback':
-            acierto = elegida == pregunta['correct_idx']
-            msg = f"¡Correcto! {habilidad['nombre']} cargada." if acierto else "Incorrecto. La habilidad no se carga."
-            ventana.blit(texto(font_large, msg, (30, 130, 45) if acierto else (170, 45, 45)), (rect.x + 28, y + 4))
-            boton_cerrar = pygame.Rect(rect.right - 180, rect.bottom - 60, 150, 44)
-            draw_button(ventana, boton_cerrar, "Continuar", mouse_pos, (70, 150, 95), (95, 180, 120))
-
-        pygame.display.flip()
-        clock.tick(30)
-        await asyncio.sleep(0)
-
-        for ev in entrada.obtener_eventos():
-            if ev.type == pygame.QUIT:
-                pygame.quit()
-                raise SystemExit
-            if ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE and fase == 'pregunta':
-                return False, time.time() - inicio
-            if ev.type == pygame.MOUSEBUTTONDOWN:
-                if fase == 'pregunta':
-                    for idx, opt_rect in enumerate(opciones_rects):
-                        if opt_rect.collidepoint(ev.pos):
-                            elegida = idx
-                            fase = 'feedback'
-                            if sound:
-                                sound.play('correct' if idx == pregunta['correct_idx'] else 'error')
-                elif boton_cerrar and boton_cerrar.collidepoint(ev.pos):
-                    return elegida == pregunta['correct_idx'], time.time() - inicio
+    """Pregunta para ganar una habilidad de este tema. La ventana es la
+    misma de los tres minijuegos (skills.modal_pregunta); aquí solo se elige
+    la habilidad, su icono y una pregunta del tema."""
+    return await modal_pregunta(ventana, _POR_ID_VEC[hid], _icono_vector(hid, 56),
+                                pick_question(generar_tablero(), tema_id), sound)
 
 
 # -------------------- JUEGO --------------------

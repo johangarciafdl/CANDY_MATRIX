@@ -36,6 +36,7 @@ MODULOS = [
     "entrada.py",
     "fuentes.py",
     "luces.py",
+    "marca.py",
     "fruits.py",
     "animations.py",
     "effects.py",

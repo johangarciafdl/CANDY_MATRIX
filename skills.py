@@ -12,8 +12,10 @@ import math
 import time
 import pygame
 
-from config import Config, BLANCO, font, font_small, font_large
+from config import Config, BLANCO, font, font_small
 from ui import draw_button, texto
+from fuentes import fuente, TITULO_SUAVE, TEXTO, TEXTO_FUERTE
+from luces import multiplicar_todo
 from quiz_system import pick_question
 
 HABILIDADES = [
@@ -233,63 +235,162 @@ def draw_barra(ventana, sistema, seleccionada, mouse_pos):
 
 # -------------------- MODAL DE PREGUNTA --------------------
 async def preguntar_para_habilidad(ventana, tablero, hid, sound=None, tema_id='matrices'):
-    """Pregunta para ganar la habilidad. Devuelve (acertó, segundos_de_pausa)."""
-    habilidad = _POR_ID[hid]
-    pregunta = pick_question(tablero, tema_id)
-    inicio = time.time()
-    clock = pygame.time.Clock()
+    """Pregunta para ganar una habilidad de Matrices. Devuelve (acertó, pausa)."""
+    return await modal_pregunta(ventana, _POR_ID[hid], _icono(hid, 56),
+                                pick_question(tablero, tema_id), sound)
 
-    ancho, alto = 760, 460
-    rect = pygame.Rect((Config.ANCHO - ancho) // 2, (Config.ALTO - alto) // 2, ancho, alto)
+
+def _envolver_px(fuente_txt, texto_largo, ancho_max):
+    """Parte un texto en líneas que caben en `ancho_max` píxeles. Por caracteres
+    (como antes) no sirve: el ancho real depende de la fuente y de las letras."""
+    palabras = texto_largo.split()
+    if not palabras:
+        return []
+    lineas, actual = [], palabras[0]
+    for palabra in palabras[1:]:
+        candidato = actual + ' ' + palabra
+        if fuente_txt.size(candidato)[0] <= ancho_max:
+            actual = candidato
+        else:
+            lineas.append(actual)
+            actual = palabra
+    lineas.append(actual)
+    return lineas
+
+
+def _aclarar(color, k):
+    return tuple(int(c + (255 - c) * k) for c in color)
+
+
+async def modal_pregunta(ventana, habilidad, icono, pregunta, sound=None):
+    """Ventana de pregunta para cargar una habilidad, común a los tres minijuegos.
+
+    Antes cada minijuego tenía su propia copia, casi idéntica, con un alto fijo:
+    la explicación se salía por debajo del recuadro, y en Vectores y Sistemas ni
+    siquiera se mostraba, así que el estudiante no veía por qué había acertado o
+    fallado. Ahora el alto se calcula a partir del contenido y la explicación
+    aparece siempre. Devuelve (acertó, segundos que estuvo abierta).
+    """
+    clock = pygame.time.Clock()
+    inicio = time.time()
+
+    # La partida queda detrás, congelada y oscurecida una sola vez (antes se
+    # creaba una capa de pantalla completa con alfa en cada fotograma).
+    fondo = ventana.copy()
+    multiplicar_todo(fondo, (96, 78, 92))
+
+    f_titulo = fuente(TITULO_SUAVE, 30)
+    f_desc = fuente(TEXTO, 16)
+    f_preg = fuente(TITULO_SUAVE, 27)
+    f_opcion = fuente(TEXTO_FUERTE, 19)
+    f_msg = fuente(TITULO_SUAVE, 25)
+    f_expl = fuente(TEXTO, 16)
+    f_num = fuente(TEXTO_FUERTE, 15)
+    f_boton = fuente(TITULO_SUAVE, 22)
+
+    ancho = 800
+    pad = 34
+    interior = ancho - 2 * pad
+    color = habilidad['color']
+    oscuro = tuple(int(c * 0.62) for c in color)
+
+    desc = _envolver_px(f_desc, habilidad['desc'], interior - 84)
+    preg = _envolver_px(f_preg, " ".join(pregunta['lines']), interior)
+    expl = _envolver_px(f_expl, pregunta.get('explanation', ''), interior)
+    n_op = len(pregunta['options'])
+
+    # ---- maqueta vertical (distancias desde el borde superior de la tarjeta)
+    alto_cabecera = 30 + 34 + 20 * len(desc) + 18
+    y_instr = alto_cabecera + 16
+    y_preg = y_instr + 26
+    y_ops = y_preg + 34 * len(preg) + 14
+    alto_op, sep_op = 50, 10
+    fin_ops = y_ops + n_op * (alto_op + sep_op) - sep_op
+    alto_pregunta = fin_ops + pad
+    y_msg = fin_ops + 20
+    y_expl = y_msg + 38
+    y_boton = y_expl + 22 * len(expl) + (14 if expl else 0)
+    alto_total = y_boton + 50 + pad
+
+    x0 = (Config.ANCHO - ancho) // 2
+    # Se centra según el alto final (con la explicación): así la tarjeta no
+    # salta al responder, solo crece hacia abajo.
+    y0 = max(16, (Config.ALTO - alto_total) // 2)
+
     fase = 'pregunta'
     elegida = None
+    t_respuesta = None
 
     while True:
+        ahora = time.time()
         mouse_pos = entrada.posicion_puntero()
+        k_feed = 0.0 if t_respuesta is None else min(1.0, (ahora - t_respuesta) / 0.22)
+        k_feed = 1 - (1 - k_feed) ** 3
+        alto = int(alto_pregunta + (alto_total - alto_pregunta) * k_feed)
+        tarjeta = pygame.Rect(x0, y0, ancho, alto)
+
+        ventana.blit(fondo, (0, 0))
+        pygame.draw.rect(ventana, (26, 16, 28), tarjeta.move(0, 8), border_radius=22)
+        pygame.draw.rect(ventana, (252, 249, 246), tarjeta, border_radius=22)
+        cabecera = pygame.Rect(x0, y0, ancho, alto_cabecera)
+        pygame.draw.rect(ventana, _aclarar(color, 0.82), cabecera,
+                         border_top_left_radius=22, border_top_right_radius=22)
+        pygame.draw.rect(ventana, color, tarjeta, 4, border_radius=22)
+
+        # Cabecera: icono, nombre de la habilidad y qué hace
+        centro_icono = (x0 + pad + 30, y0 + alto_cabecera // 2)
+        pygame.draw.circle(ventana, (255, 255, 255), centro_icono, 36)
+        pygame.draw.circle(ventana, color, centro_icono, 36, 3)
+        ventana.blit(icono, icono.get_rect(center=centro_icono))
+        tx = x0 + pad + 84
+        ventana.blit(texto(f_titulo, "Habilidad: " + habilidad['nombre'], oscuro), (tx, y0 + 24))
+        for i, linea in enumerate(desc):
+            ventana.blit(texto(f_desc, linea, (88, 66, 66)), (tx, y0 + 62 + 20 * i))
+
+        ventana.blit(texto(f_desc, "Responde bien para cargarla", (150, 112, 92)),
+                     (x0 + pad, y0 + y_instr))
+        for i, linea in enumerate(preg):
+            ventana.blit(texto(f_preg, linea, (42, 28, 32)), (x0 + pad, y0 + y_preg + 34 * i))
+
         opciones_rects = []
-
-        capa = pygame.Surface((Config.ANCHO, Config.ALTO), pygame.SRCALPHA)
-        capa.fill((10, 10, 10, 195))
-        ventana.blit(capa, (0, 0))
-
-        pygame.draw.rect(ventana, (250, 248, 252), rect, border_radius=18)
-        pygame.draw.rect(ventana, habilidad['color'], rect, 5, border_radius=18)
-
-        icono = _icono(hid, 54)
-        ventana.blit(icono, icono.get_rect(center=(rect.x + 52, rect.y + 48)))
-        ventana.blit(texto(font_large, f"Habilidad: {habilidad['nombre']}", habilidad['color']), (rect.x + 92, rect.y + 26))
-        ventana.blit(texto(font_small, habilidad['desc'], (70, 60, 60)), (rect.x + 92, rect.y + 60))
-        ventana.blit(texto(font_small, "Responde correctamente para cargarla.", (120, 90, 60)), (rect.x + 28, rect.y + 96))
-
-        y = rect.y + 128
-        for linea in pregunta['lines']:
-            ventana.blit(texto(font_large, linea, (25, 25, 30)), (rect.x + 28, y))
-            y += 32
-
-        y += 12
         for idx, opcion in enumerate(pregunta['options']):
-            opt_rect = pygame.Rect(rect.x + 40, y, rect.width - 80, 46)
-            opciones_rects.append(opt_rect)
-            base, hov = (232, 228, 242), (216, 212, 236)
+            r = pygame.Rect(x0 + pad, y0 + y_ops + idx * (alto_op + sep_op), interior, alto_op)
+            opciones_rects.append(r)
+            base, hov, borde = (241, 236, 248), (228, 220, 246), (206, 196, 222)
             if fase == 'feedback':
                 if idx == pregunta['correct_idx']:
-                    base = hov = (168, 220, 168)
+                    base = hov = (178, 226, 178)
+                    borde = (70, 160, 90)
                 elif idx == elegida:
-                    base = hov = (232, 158, 158)
-            draw_button(ventana, opt_rect, opcion, mouse_pos, base, hov, text_color=(25, 25, 30))
-            y += 54
+                    base = hov = (242, 170, 166)
+                    borde = (196, 72, 66)
+                else:
+                    base = hov = borde = (238, 236, 240)
+            encima = fase == 'pregunta' and r.collidepoint(mouse_pos)
+            pygame.draw.rect(ventana, hov if encima else base, r, border_radius=14)
+            pygame.draw.rect(ventana, borde, r, 2, border_radius=14)
+            # Insignia con la tecla (1, 2, 3...) para responder con el teclado
+            cx_ins = (r.x + 30, r.centery)
+            pygame.draw.circle(ventana, (255, 255, 255), cx_ins, 15)
+            pygame.draw.circle(ventana, borde, cx_ins, 15, 2)
+            num = texto(f_num, str(idx + 1), (90, 70, 96))
+            ventana.blit(num, num.get_rect(center=cx_ins))
+            etq = texto(f_opcion, opcion, (36, 26, 34))
+            ventana.blit(etq, etq.get_rect(center=(r.centerx + 15, r.centery)))
 
         boton_cerrar = None
-        if fase == 'feedback':
+        if fase == 'feedback' and k_feed > 0.6:
             acierto = elegida == pregunta['correct_idx']
-            msg = f"¡Correcto! {habilidad['nombre']} cargada." if acierto else "Incorrecto. La habilidad no se carga."
-            ventana.blit(texto(font_large, msg, (30, 130, 45) if acierto else (170, 45, 45)), (rect.x + 28, y + 4))
-            yy = y + 40
-            for linea in _envolver(pregunta.get('explanation', ''), 68):
-                ventana.blit(texto(font_small, linea, (60, 60, 60)), (rect.x + 28, yy))
-                yy += 21
-            boton_cerrar = pygame.Rect(rect.right - 180, rect.bottom - 60, 150, 44)
-            draw_button(ventana, boton_cerrar, "Continuar", mouse_pos, (70, 150, 95), (95, 180, 120))
+            if acierto:
+                msg, col_msg = "¡Correcto! %s cargada." % habilidad['nombre'], (38, 140, 62)
+            else:
+                msg, col_msg = "Incorrecto: la habilidad no se carga.", (190, 52, 52)
+            ventana.blit(texto(f_msg, msg, col_msg), (x0 + pad, y0 + y_msg))
+            for i, linea in enumerate(expl):
+                ventana.blit(texto(f_expl, linea, (72, 62, 64)), (x0 + pad, y0 + y_expl + 22 * i))
+            boton_cerrar = pygame.Rect(x0 + ancho - pad - 200, y0 + y_boton, 200, 50)
+            draw_button(ventana, boton_cerrar, "Continuar", mouse_pos, (64, 150, 92), (88, 178, 116),
+                        font_obj=f_boton)
 
         pygame.display.flip()
         clock.tick(30)
@@ -299,30 +400,29 @@ async def preguntar_para_habilidad(ventana, tablero, hid, sound=None, tema_id='m
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 raise SystemExit
-            if ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE and fase == 'pregunta':
-                return False, time.time() - inicio
-            if ev.type == pygame.MOUSEBUTTONDOWN:
-                if fase == 'pregunta':
-                    for idx, opt_rect in enumerate(opciones_rects):
-                        if opt_rect.collidepoint(ev.pos):
-                            elegida = idx
-                            fase = 'feedback'
-                            if sound:
-                                sound.play('correct' if idx == pregunta['correct_idx'] else 'error')
-                elif boton_cerrar and boton_cerrar.collidepoint(ev.pos):
+            if time.time() - inicio < 0.25:
+                continue  # el clic que abrió la ventana no debe elegir una respuesta
+            if fase == 'pregunta':
+                eleccion = None
+                if ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
+                    return False, time.time() - inicio
+                if ev.type == pygame.KEYDOWN and pygame.K_1 <= ev.key < pygame.K_1 + n_op:
+                    eleccion = ev.key - pygame.K_1
+                elif ev.type == pygame.MOUSEBUTTONDOWN:
+                    for idx, r in enumerate(opciones_rects):
+                        if r.collidepoint(ev.pos):
+                            eleccion = idx
+                if eleccion is not None:
+                    elegida = eleccion
+                    fase = 'feedback'
+                    t_respuesta = time.time()
+                    if sound:
+                        sound.play('correct' if eleccion == pregunta['correct_idx'] else 'error')
+            elif boton_cerrar is not None:
+                tecla = ev.type == pygame.KEYDOWN and ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER,
+                                                                 pygame.K_SPACE)
+                clic = ev.type == pygame.MOUSEBUTTONDOWN and boton_cerrar.collidepoint(ev.pos)
+                if tecla or clic:
                     return elegida == pregunta['correct_idx'], time.time() - inicio
 
 
-def _envolver(texto_largo, max_len=68):
-    if not texto_largo:
-        return []
-    palabras = texto_largo.split()
-    lineas, actual = [], palabras[0]
-    for palabra in palabras[1:]:
-        if len(actual + ' ' + palabra) <= max_len:
-            actual += ' ' + palabra
-        else:
-            lineas.append(actual)
-            actual = palabra
-    lineas.append(actual)
-    return lineas
