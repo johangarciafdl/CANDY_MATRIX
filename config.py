@@ -50,18 +50,25 @@ COLOR_MAP = [
 FRUTAS = ["Manzana", "Pera", "Arándano", "Limón", "Uva", "Naranja", "Sandía"]
 
 # ------------------- FUENTES -------------------
-def create_font(size, bold=False):
-    """Crea una fuente segura con fallback en caso de error."""
-    try:
-        return pygame.font.SysFont('arial', size, bold=bold)
-    except:
-        return pygame.font.Font(None, size)
+# Fuentes incluidas en assets/fonts (ver fuentes.py): en el navegador no hay
+# fuentes del sistema, así que con SysFont('arial') la web se veía distinta.
+#
+# Los tamaños no son los mismos que tenía Arial porque Nunito es más ancha: a
+# igual tamaño ocupa ~22 % más. Se eligieron para conservar la altura de las
+# minúsculas (lo que decide si se lee bien) sin ensanchar más de un 10 %, que
+# los diseños existentes absorben. Fredoka es más estrecha que Arial negrita,
+# por eso los títulos sí pudieron crecer.
+from fuentes import fuente, TITULO, TITULO_SUAVE, TEXTO, TEXTO_FUERTE
 
-# Fuentes globales
-font_small = create_font(16)
-font = create_font(20)
-font_large = create_font(30, bold=True)
-font_title = create_font(48, bold=True)
+font_small = fuente(TEXTO, 14)
+font = fuente(TEXTO, 17)
+font_large = fuente(TITULO_SUAVE, 30)
+font_title = fuente(TITULO, 50)
+
+
+def create_font(size, bold=False):
+    """Compatibilidad: fuente de texto (o de título si bold) a un tamaño dado."""
+    return fuente(TITULO_SUAVE if bold else TEXTO, size)
 
 # ------------------- UTILIDADES -------------------
 def draw_text_center(surface, text, font, color, y_offset=0):

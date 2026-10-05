@@ -34,6 +34,7 @@ MODULOS = [
     "matrix_logic.py",
     "sound_manager.py",
     "entrada.py",
+    "fuentes.py",
     "fruits.py",
     "animations.py",
     "effects.py",
@@ -153,6 +154,56 @@ def verificar_sombras():
     print("Nombres verificados: ninguna variable tapa un módulo importado")
 
 
+def verificar_fuentes():
+    """Ningún texto del juego puede quedar sin glifo (se vería un cuadrito).
+
+    Comprueba dos cosas contra las tablas de caracteres reales de las fuentes:
+      1. que RANGOS_PRINCIPALES de fuentes.py no prometa caracteres que las
+         fuentes principales no tienen;
+      2. que cada carácter que aparece en los textos del juego lo cubra la
+         fuente principal o la de símbolos.
+    Necesita fontTools (.venv\\Scripts\\pip install fonttools); sin él se avisa
+    y se sigue, porque es una comprobación de calidad, no de funcionamiento.
+    """
+    import ast
+    try:
+        from fontTools.ttLib import TTFont
+    except ImportError:
+        print("AVISO: sin fontTools no se verifican los glifos (pip install fonttools)")
+        return
+
+    sys.path.insert(0, RAIZ)
+    import fuentes
+
+    carpeta = os.path.join(RAIZ, "assets", "fonts")
+    principales = [fuentes.TITULO, fuentes.TITULO_SUAVE, fuentes.TEXTO, fuentes.TEXTO_FUERTE]
+    comun = set.intersection(*[set(TTFont(os.path.join(carpeta, f)).getBestCmap())
+                               for f in principales])
+    respaldo = set(TTFont(os.path.join(carpeta, fuentes.SIMBOLOS)).getBestCmap())
+
+    prometidos = {o for a, b in fuentes.RANGOS_PRINCIPALES for o in range(a, b + 1)}
+    falsos = sorted(prometidos - comun)
+    if falsos:
+        sys.exit("RANGOS_PRINCIPALES incluye caracteres que las fuentes no tienen: %s"
+                 % " ".join("U+%04X" % o for o in falsos[:20]))
+
+    sin_glifo = {}
+    for modulo in MODULOS:
+        arbol = ast.parse(open(os.path.join(RAIZ, modulo), encoding="utf-8").read(), modulo)
+        for nodo in ast.walk(arbol):
+            if isinstance(nodo, ast.Constant) and isinstance(nodo.value, str):
+                for c in nodo.value:
+                    o = ord(c)
+                    if o >= 0x20 and o not in prometidos and o not in respaldo:
+                        sin_glifo.setdefault(c, set()).add(modulo)
+
+    if sin_glifo:
+        detalle = "; ".join("%r U+%04X en %s" % (c, ord(c), ", ".join(sorted(m)))
+                            for c, m in sorted(sin_glifo.items()))
+        sys.exit("Caracteres sin glifo en ninguna fuente (saldrían como cuadritos): " + detalle)
+    print("Fuentes verificadas: todos los textos tienen glifo")
+
+
 def preparar_staging():
     """Copia los módulos y los sonidos .ogg a una carpeta limpia."""
     if os.path.isdir(STAGING):
@@ -176,7 +227,18 @@ def preparar_staging():
         shutil.copy2(os.path.join(origen_sonidos, nombre),
                      os.path.join(STAGING, "assets", "sounds", nombre))
 
-    print("Staging listo: %d módulos, %d sonidos" % (len(MODULOS), len(oggs)))
+    # Fuentes: sin ellas el navegador cae a la fuente por defecto de pygame.
+    # Se copian también los avisos de licencia OFL, que la licencia exige que
+    # acompañen a las fuentes donde se redistribuyan.
+    origen_fuentes = os.path.join(RAIZ, "assets", "fonts")
+    destino_fuentes = os.path.join(STAGING, "assets", "fonts")
+    os.makedirs(destino_fuentes)
+    fuentes_copiadas = sorted(f for f in os.listdir(origen_fuentes) if f.endswith((".ttf", ".txt")))
+    for nombre in fuentes_copiadas:
+        shutil.copy2(os.path.join(origen_fuentes, nombre), os.path.join(destino_fuentes, nombre))
+
+    print("Staging listo: %d módulos, %d sonidos, %d archivos de fuentes"
+          % (len(MODULOS), len(oggs), len(fuentes_copiadas)))
 
 
 def compilar(servir):
@@ -203,6 +265,7 @@ def main():
     verificar_dependencias()
     verificar_entrada()
     verificar_sombras()
+    verificar_fuentes()
     preparar_staging()
     codigo = compilar(args.servir)
     if codigo == 0 and not args.servir:

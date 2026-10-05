@@ -116,6 +116,12 @@ async def pedir_nombre(ventana):
     # cuando ya hay un nombre guardado de la sesión anterior.
     pygame.event.clear()
 
+    # La cinemática termina en negro; esta pantalla aparece desde negro en vez
+    # de saltar de golpe a su fondo crema, que se veía como un fogonazo.
+    velo_negro = pygame.Surface((Config.ANCHO, Config.ALTO)).convert()
+    velo_negro.fill((0, 0, 0))
+    t_entrada = pygame.time.get_ticks()
+
     pygame.key.start_text_input()
     try:
         while True:
@@ -147,6 +153,11 @@ async def pedir_nombre(ventana):
                                 _COLOR_TECLA_ACTIVA, text_color=_COLOR_TECLA_TEXTO,
                                 font_obj=font_large, radius=10)
                     break
+
+            aparicion = min(1.0, (pygame.time.get_ticks() - t_entrada) / 600.0)
+            if aparicion < 1.0:
+                velo_negro.set_alpha(int(255 * (1 - aparicion) ** 2))
+                ventana.blit(velo_negro, (0, 0))
 
             pygame.display.flip()
             clock.tick(Config.FPS)
