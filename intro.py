@@ -156,8 +156,13 @@ def _ficha(valor, lado=46):
         cuerpo = pygame.Rect(0, 0, lado, lado)
         pygame.draw.rect(s, (*_oscurecer(color, 0.45), 255), cuerpo.move(0, 4), border_radius=12)
         pygame.draw.rect(s, (*color, 255), cuerpo, border_radius=12)
-        brillo = pygame.Rect(4, 3, lado - 8, int(lado * 0.42))
-        pygame.draw.rect(s, (255, 255, 255, 72), brillo, border_radius=9)
+        # El brillo se dibuja aparte y se MEZCLA con blit: pygame.draw no mezcla
+        # un color semitransparente, reemplaza el píxel, así que dibujado
+        # directo abría un "agujero" al 28 % en la ficha, que sobre el fondo
+        # oscuro de la cinemática se veía como una franja gris.
+        brillo = pygame.Surface((lado - 8, int(lado * 0.42)), pygame.SRCALPHA)
+        pygame.draw.rect(brillo, (255, 255, 255, 72), brillo.get_rect(), border_radius=9)
+        s.blit(brillo, (4, 3))
         pygame.draw.rect(s, (*_oscurecer(color, 0.62), 255), cuerpo, 2, border_radius=12)
         f = fuente(TITULO, int(lado * 0.56))
         sombra = f.render(str(valor), True, _oscurecer(color, 0.4))
