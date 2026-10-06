@@ -185,3 +185,20 @@ estar tocando el sitio correcto.
 módulo y que nadie lea los eventos por su cuenta. Lo que **no** puede detectar
 es un `await` que falta — eso compila igual y el juego se congela en el
 navegador.
+
+## Sonidos de la cinemática
+
+Los efectos `assets/sounds/cine_*.ogg` (27 archivos, ~300 KB) se sintetizan con
+código en `generar_sonidos.py`: sin licencias de terceros y cada uno hecho a la
+medida de su momento (todos en re, para que combinen al solaparse). Para
+ajustarlos, se edita ese archivo y se regeneran:
+
+```bat
+.venv\Scripts\pip install numpy soundfile
+.venv\Scripts\python generar_sonidos.py
+```
+
+El juego no los decodifica al arrancar (costaría ~0,6 s en el PC, más en el
+navegador): la cinemática los carga uno por fotograma durante su fundido inicial
+en negro, en el orden en que suenan. Su volumen relativo está en
+`sound_manager.py` (`VOLUMENES_CINE`).

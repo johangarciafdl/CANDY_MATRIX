@@ -38,7 +38,7 @@ import pygame.gfxdraw
 import entrada
 from config import Config, COLOR_MAP
 from fuentes import fuente, TITULO, TEXTO_FUERTE
-from marca import ORDEN_COLORES as _ORDEN_COLORES, maqueta_titulo as _maqueta_titulo
+from marca import ORDEN_COLORES as _ORDEN_COLORES, maqueta_titulo as _maqueta_titulo, TITULO_STR
 from luces import (ease as _ease, ease_out as _ease_out, ease_out_back as _ease_out_back,
                    fase as _fase, mezcla as _mezcla, oscurecer as _oscurecer,
                    guardado as _guardado, gradiente_blanco as _gradiente_blanco,
@@ -324,10 +324,51 @@ class _Escena:
         } for _ in range(12)]
 
         self.lienzo = pygame.Surface((ANCHO, ALTO))
+        self.encajadas = 0  # fichas que ya encajaron (para espaciar los clics)
+        # Al salir (fin o salto) la imagen sigue animándose 0,6 s mientras se
+        # funde a negro; sin esto, los clics y letras de esos fotogramas
+        # sonaban a volumen completo DESPUÉS del fundido del sonido.
+        self.saliendo = False
+        self.agenda = self._agenda_sonora()
+
+    def _agenda_sonora(self):
+        """Sonidos fijados en la línea de tiempo: (segundo, nombre).
+
+        Los de generar_sonidos.py, todos en re para que combinen aunque se
+        solapen. Los que dependen de un evento concreto (cada ficha que
+        encaja, cada letra que cae) se disparan desde su escena.
+        """
+        agenda = [(0.05, 'cine_ambiente')]
+        # Un destello de cristal por cada cuarta ficha que aparece: con las 36
+        # sonaría a lluvia; con 9, a notas sueltas de una melodía.
+        orden = sorted(self.fichas, key=lambda f: f['retraso'])
+        for k, f in enumerate(orden[::4]):
+            agenda.append((T_APERTURA + f['retraso'] * 1.6 + 0.15, 'cine_brillo_%d' % (k % 4 + 1)))
+        agenda += [
+            (T_FRAGMENTOS - 0.15, 'cine_rafaga'),       # las fichas salen volando
+            (T_CONVERGENCIA, 'cine_acorde'),            # la matriz se completa
+            (T_MATRIZ, 'cine_vacio'),                   # aparece El Vacío
+            (T_MATRIZ + 0.5, 'cine_grieta'),            # las grietas se extienden
+            (T_VACIO, 'cine_estallido'),                # estalla
+            (T_VACIO, 'shatter'),
+            (T_RUPTURA + 0.15, 'cine_chispa'),          # se enciende la chispa
+            (T_RUPTURA + 0.6, 'cine_calidez'),
+            (T_CHISPA, 'cine_subida'),                  # sube hasta el título
+        ]
+        return sorted(agenda)
+
+    def sonar_agenda(self, t):
+        while self.agenda and self.agenda[0][0] <= t:
+            _, nombre = self.agenda.pop(0)
+            if self.sonido:
+                self.sonido.play(nombre)
+            if nombre == 'cine_vacio' and self.sonido:
+                # El ambiente del principio se apaga cuando llega El Vacío
+                self.sonido.detener('cine_ambiente', 1500)
 
     # ---------- utilidades de escena ----------
     def sonar(self, nombre, clave):
-        if clave in self.hechos:
+        if clave in self.hechos or self.saliendo:
             return
         self.hechos.add(clave)
         if self.sonido:
@@ -372,6 +413,9 @@ class _Escena:
             if p >= 1 and not f['llego']:
                 f['llego'] = True
                 self.particulas.estallido(x, y, COLOR_MAP[f['valor']], 5, 110, vida=0.45, radios=(4, 6))
+                if self.encajadas % 3 == 0 and self.sonido and not self.saliendo:
+                    self.sonido.play('cine_encaje_%d' % ((self.encajadas // 3) % 2 + 1))
+                self.encajadas += 1
 
     def _camino(self, f, p):
         """De la posición suelta a su celda, por un arco suave (no en línea recta)."""
@@ -398,7 +442,6 @@ class _Escena:
             for g in range(3):
                 pygame.gfxdraw.aacircle(s, CX, CY, r + g, col)
             if self.una_vez('onda'):
-                self.sonar('chime', 'chime_matriz')
                 for f in self.fichas:
                     self.particulas.estallido(*f['destino'], COLOR_MAP[f['valor']], 2, 160, vida=0.6, radios=(4,))
 
@@ -451,12 +494,10 @@ class _Escena:
         pygame.gfxdraw.aacircle(s, CX, CY, r - 1, (120, 20, 60))
         cero = _texto("0", max(12, int(r * 1.15) // 4 * 4), (238, 60, 96), TITULO)
         s.blit(cero, cero.get_rect(center=(CX, CY + 2)))
-        self.sonar('error', 'error_vacio')
 
     def ruptura(self, s, t):
         p = _fase(t, T_VACIO, T_RUPTURA)
         if self.una_vez('estallido'):
-            self.sonar('shatter', 'shatter')
             for f in self.fichas:
                 self.particulas.estallido(*f['destino'], COLOR_MAP[f['valor']], 3, 380, vida=1.0)
             self.particulas.estallido(CX, CY, (255, 210, 230), 26, 520, vida=1.1, radios=(4, 6, 8))
@@ -498,7 +539,6 @@ class _Escena:
         ignicion = _fase(t, T_RUPTURA + 0.15, T_RUPTURA + 0.8)
         if ignicion <= 0:
             return
-        self.sonar('chime', 'chime_chispa')
         crece = _ease_out_back(ignicion, 1.4)
         pulso = 1 + 0.12 * math.sin(t * 3.4)
 
@@ -563,14 +603,14 @@ class _Escena:
             letra.set_alpha(int(255 * min(1.0, p * 2.5)))
             s.blit(letra, (x0 + xs[i], y))
             if p >= 1 and self.una_vez(('letra', i)):
-                self.sonar('explosion', ('pop', i))
+                self.sonar('cine_letra_%d' % (i if i < TITULO_STR.index(' ') else i - 1), ('letra_sonido', i))
                 cx_l = x0 + xs[i] + letra.get_width() // 2
                 color = COLOR_MAP[_ORDEN_COLORES[i]]
                 self.particulas.estallido(cx_l, y0 + letra.get_height() // 2, color, 8, 260, vida=0.7)
 
         if todas:
             fin = inicio + (len(letras) - 1) * 0.08 + 0.5
-            self.sonar('levelup', 'levelup')
+            self.sonar('cine_titulo', 'titulo')
             p_brillo = _fase(t, fin + 0.15, fin + 0.95)
             if 0 < p_brillo < 1:
                 self._destello(s, compuesto, mascara, x0, y0, p_brillo)
@@ -649,6 +689,17 @@ async def mostrar_intro(ventana, sound=None):
     for v in range(len(COLOR_MAP)):
         _ficha(v)
     pendientes = _tareas_de_precalentado()
+    if sound and hasattr(sound, 'cargar'):
+        # El ambiente suena desde el primer instante: se carga ya. El resto,
+        # uno por fotograma y en el orden en que suenan, durante el fundido
+        # inicial en negro (se sacan del final de la lista: van al revés).
+        sound.cargar('cine_ambiente')
+        orden = [n for _, n in escena.agenda] + ['cine_encaje_1', 'cine_encaje_2']
+        orden += ['cine_letra_%d' % i for i in range(11)] + ['cine_titulo']
+        orden = [n for n in dict.fromkeys(orden) if n.startswith('cine_')]
+        sonidos_pendientes = [lambda n=n: sound.cargar(n) for n in reversed(orden)]
+    else:
+        sonidos_pendientes = []
 
     # Descarta el toque/clic con el que el navegador arrancó el juego, que de
     # otro modo quedaría en la cola y saltaría la cinemática en el primer frame.
@@ -673,6 +724,13 @@ async def mostrar_intro(ventana, sound=None):
 
         if t_salida is None and t >= TOTAL:
             t_salida = t
+        if t_salida is None:
+            escena.sonar_agenda(t)
+        elif escena.una_vez('fundido_sonoro'):
+            # Al terminar o al saltar, todo se apaga con la imagen (no corta en seco)
+            escena.saliendo = True
+            if sound:
+                sound.fundir_todo(int(DURACION_SALIDA * 1000))
         if t_salida is not None and t - t_salida >= DURACION_SALIDA:
             ventana.fill((0, 0, 0))
             pygame.display.flip()
@@ -688,7 +746,9 @@ async def mostrar_intro(ventana, sound=None):
         # pantalla aún sale del negro. Hacerlo todo antes de empezar costaba
         # ~0,55 s en el PC (y bastante más en el navegador) de pantalla negra
         # justo después de la de carga.
-        if pendientes:
+        if sonidos_pendientes:
+            sonidos_pendientes.pop()()  # un sonido por fotograma (7-50 ms cada uno)
+        elif pendientes:
             limite = perf_counter() + PRESUPUESTO_PRECALENTADO
             while pendientes and perf_counter() < limite:
                 pendientes.pop()()
