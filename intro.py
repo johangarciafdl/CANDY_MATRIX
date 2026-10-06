@@ -30,6 +30,7 @@ import asyncio
 import math
 import random
 import time
+from time import perf_counter  # para medir el presupuesto (time.time puede ser simulado en pruebas)
 
 import pygame
 import pygame.gfxdraw
@@ -595,6 +596,42 @@ class _Escena:
 
 
 # ==================== bucle ====================
+PRESUPUESTO_PRECALENTADO = 0.008  # segundos de precalentado por fotograma
+
+
+def _tareas_de_precalentado():
+    """Lo que conviene tener creado antes de necesitarlo, en el orden en que se
+    necesita (se sacan del final de la lista, así que va al revés).
+
+    Crear las rotaciones de las fichas y los halos de las partículas sobre la
+    marcha causaba tirones de hasta 155 ms justo en el estallido, el momento
+    que más tiene que lucir; pero hacerlo todo antes del primer fotograma
+    dejaba la pantalla en negro. Repartido, nadie lo nota.
+    """
+    tareas = []
+    # 1.º curvas de luz y fichas pequeñas; 2.º giros de los fragmentos (±42°,
+    # desde t≈1 s); 3.º halos de partículas (desde t≈3,4 s); 4.º el resto de
+    # giros (estallido, t≈9,8 s); 5.º el título (t≈14,8 s).
+    for curva in (3.0, 2.2, 2.6, 1.6, 1.7, 1.8, 2.0, 2.4):
+        tareas.append(lambda c=curva: _gradiente_blanco(c))
+    for v in range(len(COLOR_MAP)):
+        tareas.append(lambda v=v: _ficha(v, 26))
+    giros_tempranos = [a for a in range(0, 360, 6) if a <= 42 or a >= 318]
+    for v in range(len(COLOR_MAP)):
+        for angulo in giros_tempranos:
+            tareas.append(lambda v=v, a=angulo: _ficha_girada(v, a))
+    for color in COLORES_PARTICULA:
+        for r in TAMANOS_PARTICULA:
+            tareas.append(lambda c=color, r=r: [_luz(_DESCARTE, 0, 0, r, c, k / 16, curva=2.6)
+                                                for k in range(1, 17)])
+    for v in range(len(COLOR_MAP)):
+        for angulo in range(0, 360, 6):
+            if angulo not in giros_tempranos:
+                tareas.append(lambda v=v, a=angulo: _ficha_girada(v, a))
+            tareas.append(lambda v=v, a=angulo: _ficha_girada(v, a, 26))
+    tareas.append(_maqueta_titulo)
+    tareas.reverse()
+    return tareas
 _DESCARTE = pygame.Surface((1, 1))  # destino para precalentar la caché
 async def mostrar_intro(ventana, sound=None):
     """Corre la cinemática una vez al arrancar. `sound` es el SoundManager ya
@@ -602,26 +639,11 @@ async def mostrar_intro(ventana, sound=None):
     su propio efecto de sonido."""
     clock = pygame.time.Clock()
     escena = _Escena(sound)
-    # Calentar las cachés antes de empezar, para que el primer segundo no
-    # tartamudee mientras se crean el fondo y las fichas.
+    # Solo lo imprescindible para el primer fotograma: el cielo y las fichas.
     _fondo()
-    _maqueta_titulo()
     for v in range(len(COLOR_MAP)):
         _ficha(v)
-        _ficha(v, 26)
-    for curva in (1.6, 1.7, 1.8, 2.0, 2.2, 2.4, 2.6, 3.0):
-        _gradiente_blanco(curva)
-    # Rotaciones de las fichas y halos de las partículas: crearlos sobre la
-    # marcha la primera vez que se necesitan causaba tirones de hasta 155 ms
-    # justo en el estallido, que es el momento que más tiene que lucir.
-    for v in range(len(COLOR_MAP)):
-        for angulo in range(0, 360, 6):
-            _ficha_girada(v, angulo)
-            _ficha_girada(v, angulo, 26)
-    for color in COLORES_PARTICULA:
-        for r in TAMANOS_PARTICULA:
-            for k in range(1, 17):
-                _luz(_DESCARTE, 0, 0, r, color, k / 16, curva=2.6)
+    pendientes = _tareas_de_precalentado()
 
     # Descarta el toque/clic con el que el navegador arrancó el juego, que de
     # otro modo quedaría en la cola y saltaría la cinemática en el primer frame.
@@ -656,6 +678,15 @@ async def mostrar_intro(ventana, sound=None):
         # y se ahorra una copia de pantalla completa (~2,5 ms) por fotograma.
         sacudida = 18 * (1 - _fase(t, T_VACIO, T_VACIO + 0.8)) if T_VACIO <= t < T_VACIO + 0.8 else 0
         s = escena.lienzo if sacudida else ventana
+
+        # Precalentado repartido: unos milisegundos por fotograma mientras la
+        # pantalla aún sale del negro. Hacerlo todo antes de empezar costaba
+        # ~0,55 s en el PC (y bastante más en el navegador) de pantalla negra
+        # justo después de la de carga.
+        if pendientes:
+            limite = perf_counter() + PRESUPUESTO_PRECALENTADO
+            while pendientes and perf_counter() < limite:
+                pendientes.pop()()
         apagar_cielo = 0.55 if T_VACIO <= t < T_CHISPA else 1.0
         escena.dibujar_cielo(s, t, apagar_cielo)
 

@@ -243,13 +243,33 @@ def preparar_staging():
           % (len(MODULOS), len(oggs), len(fuentes_copiadas)))
 
 
+# Archivos que la página necesita junto a index.html (no van dentro del .apk):
+# el service worker que guarda el intérprete y la fuente del título de la
+# pantalla de carga.
+ESTATICOS = {
+    "sw.js": os.path.join("web_static", "sw.js"),
+    "Fredoka-700.ttf": os.path.join("assets", "fonts", "Fredoka-700.ttf"),
+}
+
+
+def copiar_estaticos():
+    salida = os.path.join(STAGING, "build", "web")
+    for nombre, origen in ESTATICOS.items():
+        shutil.copy2(os.path.join(RAIZ, origen), os.path.join(salida, nombre))
+
+
 def compilar(servir):
     entorno = dict(os.environ)
     # pygbag 0.9.3 lee main.py con la codificación local; en Windows eso es
     # cp1252 y falla con la "Á" de "Álgebra Lineal". Forzar UTF-8 lo evita.
     entorno["PYTHONUTF8"] = "1"
 
-    cmd = [sys.executable, "-m", "pygbag", "--title", "Candy Matrix"]
+    # Plantilla propia (web_template.tmpl): pantalla de carga en español con
+    # barra de progreso, registro del service worker y desbloqueo inmediato
+    # del audio al tocar. La de pygbag ocultaba el progreso y solo decía
+    # "Loading, please wait", así que parecía colgada.
+    cmd = [sys.executable, "-m", "pygbag", "--title", "Candy Matrix",
+           "--template", os.path.join(RAIZ, "web_template.tmpl")]
     if not servir:
         cmd.append("--build")
     cmd.append(STAGING)
@@ -270,6 +290,8 @@ def main():
     verificar_fuentes()
     preparar_staging()
     codigo = compilar(args.servir)
+    if codigo == 0:
+        copiar_estaticos()
     if codigo == 0 and not args.servir:
         salida = os.path.join(STAGING, "build", "web")
         print("\nListo ->", salida)

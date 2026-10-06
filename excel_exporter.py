@@ -1,14 +1,20 @@
 # excel_exporter.py
+"""Exporta el reporte de una partida a Excel (.xlsx).
+
+openpyxl se importa solo cuando de verdad se exporta, no al cargar el módulo.
+Importarlo cuesta ~1,9 s (intenta además cargar numpy), y como los tres
+minijuegos importan este módulo, ese tiempo se sumaba al arranque del juego. En
+el navegador era peor: pygbag no trae openpyxl, y la pantalla de "Loading,
+please wait" no termina hasta que se resuelven los import del juego.
+
+En el navegador ni se intenta: el archivo quedaría en un disco virtual de la
+pestaña, inaccesible para el estudiante.
+"""
 import os
+import sys
 from datetime import datetime
 
-try:
-    import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment
-    from openpyxl.utils import get_column_letter
-    EXCEL_AVAILABLE = True
-except Exception:
-    EXCEL_AVAILABLE = False
+EN_NAVEGADOR = sys.platform == "emscripten"
 
 
 def _carpeta_destino():
@@ -40,7 +46,13 @@ def export_to_excel(level, score, moves_count, matrix_history, game_events, matr
     matrix_history es una lista de registros {'matriz': [[...]], 'evento': '...'},
     de modo que cada matriz viaja junto a su propio evento y no puede desalinearse.
     """
-    if not EXCEL_AVAILABLE:
+    if EN_NAVEGADOR:
+        return None, "Exportar a Excel solo está disponible en la versión de computador."
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+    except ImportError:
         return None, "Falta openpyxl. Instálalo con: pip install openpyxl"
 
     wb = openpyxl.Workbook()

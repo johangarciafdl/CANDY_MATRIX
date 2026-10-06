@@ -1,0 +1,640 @@
+<html lang="en-us"><script src="{{cookiecutter.cdn}}pythons.js" type=module id="site" data-python="python{{cookiecutter.PYBUILD}}" data-LINES=42 data-COLUMNS=132 data-os="vtx,snd,gui" async defer>#<!--
+
+print("""
+Loading {{cookiecutter.title}} from {{cookiecutter.archive}}.apk
+    Pygbag Version : {{cookiecutter.version}}
+    Template Version : 0.9.3
+    Python  : {{cookiecutter.PYBUILD}}
+    CDN URL : {{cookiecutter.cdn}}
+    Screen  : {{cookiecutter.width}}x{{cookiecutter.height}}
+    Title   : {{cookiecutter.title}}
+    Folder  : {{cookiecutter.directory}}
+    Authors : {{cookiecutter.authors}}
+    SPDX-License-Identifier: {{cookiecutter.spdx}}
+
+""")
+
+import sys
+import asyncio
+import platform
+import json
+from pathlib import Path
+
+# do not rename
+async def custom_site():
+    import embed
+    platform.document.body.style.background = "#0d0818"
+
+    # El intérprete ya está descargado: la pantalla de carga pasa a "preparando"
+    platform.window.transfer.hidden = true
+    platform.window.carga_estado("preparando")
+    platform.window.canvas.style.visibility = "visible"
+
+
+    bundle = "{{cookiecutter.archive}}"
+
+    # the C or js loader could do that but be explicit.
+    appdir = Path(f"/data/data/{bundle}") # /data/data/{{cookiecutter.archive}}
+    appdir.mkdir()
+
+
+    # unpack filesystem from compressed archive into work dir
+    if platform.window.location.host.find('.itch.zone')>0:
+        import zipfile
+        async with platform.fopen("{{cookiecutter.archive}}.apk", "rb") as archive:
+            with zipfile.ZipFile(archive) as zip_ref:
+                zip_ref.extractall(appdir.as_posix())
+    else:
+        import tarfile
+        async with platform.fopen("{{cookiecutter.archive}}.tar.gz", "rb") as archive:
+            tar = tarfile.open(fileobj=archive, mode="r:gz")
+            tar.extractall(path=appdir.as_posix(), filter='tar')
+            tar.close()
+
+    # preloader will change to work dir and prepend it to sys.path
+    platform.run_main(PyConfig, loaderhome= appdir / "assets", loadermain=None)
+
+
+    # wait preloading complete : that includes images and wasm compilation of bundled modules
+    while embed.counter()<0:
+        await asyncio.sleep(.1)
+
+    main = appdir / "assets" / "main.py"
+
+    # TODO: test for window.webkitAudioContext and block aio loop until gesture if accessing media manager play
+    # before a gesture is recorded ( touch or click )
+
+    # test/wait user media interaction
+    if not platform.window.MM.UME:
+
+        # now that apk is mounted we have access to font cache
+        # but we need to fill __file__ that is not yet set
+        __import__(__name__).__file__ = main
+
+        # now make a prompt
+        msg  = "¡Listo! Toca la pantalla para comenzar"
+        platform.window.carga_estado("listo")
+        platform.window.infobox.innerText = msg
+        print("\n"*4, f"    * Waiting for media user engagement. {msg} *" , "\n"*4)
+
+        while not platform.window.MM.UME:
+            await asyncio.sleep(.1)
+
+    # start async top level machinery if not started and add a console in any case if requested.
+    await TopLevel_async_handler.start_toplevel(platform.shell, console=window.python.config.debug)
+
+    # now that apk is mounted we have access to font cache
+    # but we need to fill __file__/__name__ that are not yet set
+    __import__(__name__).__file__ = main
+
+
+    def ui_callback(pkg):
+        platform.window.infobox.innerText = f"Instalando {pkg}..."
+
+    platform.window.carga_estado("iniciando")
+    await shell.source(main, callback=ui_callback)
+
+    # if you don't reach that step
+    # your main.py has an infinite sync loop somewhere !
+
+    platform.window.infobox.style.display = "none"
+    platform.window.carga_estado("jugando")
+    platform.window.config.gui_divider = 1
+    platform.window.window_resize()
+    print("default.tmpl: done")
+
+    shell.interactive()
+
+asyncio.run( custom_site() )
+
+
+
+
+
+
+
+
+
+
+
+
+# BEGIN BLOCK
+#
+# now this is the html part you can (and should) customize
+# It is not mandatory : pygame-script when it reads the first line (also called
+# shebang ) of above code create absolute minimal widget set
+# required for running with default rules
+#
+# do not alter that comment block it is separating python code from html code
+# =============================================================================
+# --></script><head><!--
+//=============================================================================
+//
+//
+//
+//
+//
+//
+//
+
+    {%- if cookiecutter.comment != "" -%}
+{{cookiecutter.comment}}
+    {% endif %}
+
+--><script type="application/javascript">
+// END BLOCK
+
+
+
+// this dict is available under PyConfig.config from __main__
+
+config = {
+    xtermjs : "{{cookiecutter.xtermjs}}" ,
+    _sdl2 : "canvas",
+    user_canvas : 0,
+    user_canvas_managed : 0,
+    gui_divider : 2,
+    ume_block : {{cookiecutter.ume_block}},
+    can_close : {{cookiecutter.can_close}},
+    archive : "{{cookiecutter.archive}}",
+    gui_debug : 2,
+    cdn : "{{cookiecutter.cdn}}",
+    autorun : {{cookiecutter.autorun}},
+    PYBUILD : "{{cookiecutter.PYBUILD}}",
+    fb_ar   :  1.77,
+    fb_width : "{{cookiecutter.width}}",
+    fb_height : "{{cookiecutter.height}}"
+}
+
+function show_infobox() {
+    infobox.style.display = "block";
+
+    // Measure box
+    const w = infobox.offsetWidth;
+    const h = infobox.offsetHeight;
+
+    // Center in viewport
+    const left = (window.innerWidth - w) / 2;
+    const top = (window.innerHeight - h) / 2;
+
+    infobox.style.left = left + "px";
+    infobox.style.top = top + "px";
+}
+
+</script>
+
+    <title>{{cookiecutter.title}}</title>
+    <meta name="description" content="Candy Matrix: álgebra lineal jugando. Matrices, vectores y sistemas de ecuaciones.">
+    <meta name="theme-color" content="#0d0818">
+    <!-- El intérprete viene de este servidor: abrir la conexión cuanto antes -->
+    <link rel="preconnect" href="https://pygame-web.github.io" crossorigin>
+    <link rel="dns-prefetch" href="https://pygame-web.github.io">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="height=device-height, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+
+
+    <link rel="icon" type="image/png" href="favicon.png" sizes="16x16">
+
+    <style>
+        #status {
+            display: inline-block;
+            vertical-align: top;
+            margin-top: 20px;
+            margin-left: 30px;
+            font-weight: bold;
+            color: rgb(120, 120, 120);
+        }
+
+        #progress {
+            height: 20px;
+            width: 300px;
+        }
+
+        #infobox {
+            position: fixed; /* center relative to viewport */
+            background: green;
+            color: blue;
+            font-weight: bold;
+            padding: 12px 24px;
+ /*           display: none; */
+            z-index: 999999;
+        }
+        div.emscripten { text-align: center; }
+        div.emscripten_border { border: 1px solid black; }
+        div.thick_border { border: 4px solid black; }
+
+        /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
+        /* average size of droid screen 470dp x 320dp  */
+        canvas.emscripten {
+            border: 0px none;
+            background-color: transparent;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+
+            padding: 0;
+            margin: 0 auto;
+
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        body {
+            font-family: arial;
+            margin: 0;
+            padding: none;
+            background-color: #0d0818;
+        }
+
+        .topright{
+           position:absolute;
+           top:0px;
+           right:0px;
+        }
+
+        .bottomright {
+            position:absolute;
+            top: 40%;
+            right: 0px;
+        }
+
+        .center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .trinfo{
+           position: relative;
+           right: 0px;
+           border: 1px solid black;
+        }
+
+        .framed{
+           position: relative;
+           top: 150px;
+           right: 10px;
+           border: 1px solid black;
+        }
+    </style>
+
+    <script>
+/*
+        if (navigator.serviceWorker)
+            navigator.serviceWorker.register("{{cookiecutter.cdn}}pygbag{{cookiecutter.version}}.js")
+        else
+            console.warn("Service workers not supported")
+*/
+    </script>
+
+    <!-- La plantilla original cargaba browserfs.min.js de la CDN de pygbag,
+         pero ese archivo no existe allí (404 con o sin la doble barra que
+         tenía la URL) y pygbag funciona sin él: se quita la petición fallida. -->
+
+    <style>
+        /* ====================== Pantalla de carga de Candy Matrix ====================== */
+        @font-face {
+            font-family: "Fredoka";
+            src: url("Fredoka-700.ttf") format("truetype");
+            font-display: swap;
+        }
+        #carga {
+            position: fixed; inset: 0; z-index: 1000000;
+            display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(ellipse at 30% 25%, #3a1650 0%, transparent 55%),
+                        radial-gradient(ellipse at 75% 70%, #12285a 0%, transparent 55%),
+                        linear-gradient(#1a0f30, #07050f);
+            color: #f4ece2; font-family: "Nunito", "Segoe UI", Arial, sans-serif;
+            padding: 16px; box-sizing: border-box; cursor: pointer;
+            transition: opacity .5s ease;
+        }
+        #carga.oculta { opacity: 0; pointer-events: none; }
+        #carga .tarjeta { width: min(560px, 100%); text-align: center; }
+        #carga h1 {
+            font-family: "Fredoka", "Arial Rounded MT Bold", Arial, sans-serif;
+            font-size: clamp(38px, 9vw, 76px); margin: 0 0 6px; letter-spacing: 1px;
+            line-height: 1.05; text-shadow: 0 5px 0 rgba(0,0,0,.35);
+            animation: flotar 3s ease-in-out infinite;
+        }
+        @keyframes flotar { 50% { transform: translateY(-6px); } }
+        #carga h1 span { -webkit-text-stroke: 3px rgba(0,0,0,.28); paint-order: stroke fill; }
+        #carga .sub { margin: 0 0 30px; opacity: .78; font-size: clamp(14px, 3.6vw, 17px); }
+        #carga .barra {
+            height: 16px; border-radius: 999px; background: rgba(255,255,255,.12);
+            overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,.4);
+        }
+        #carga .relleno {
+            height: 100%; width: 0%; border-radius: 999px;
+            background: linear-gradient(90deg, #e63946, #f7932a, #f7cb3c, #7cbe3c, #4876d6, #9b59b6);
+            background-size: 200% 100%; animation: brillo 2s linear infinite;
+            transition: width .25s ease;
+        }
+        #carga .relleno.indeterminada { width: 35% !important; animation: vaiven 1.3s ease-in-out infinite, brillo 2s linear infinite; }
+        @keyframes brillo { to { background-position: 200% 0; } }
+        @keyframes vaiven { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+        #carga .estado { margin: 14px 0 0; font-weight: 700; font-size: clamp(15px, 3.8vw, 18px); min-height: 1.4em; }
+        #carga .pista { margin: 22px auto 0; max-width: 460px; font-size: clamp(12px, 3.2vw, 14px); opacity: .62; line-height: 1.45; }
+        #carga .tocar {
+            display: none; margin: 26px auto 0; padding: 14px 28px; border-radius: 999px;
+            font-family: "Fredoka", Arial, sans-serif; font-size: clamp(18px, 5vw, 24px);
+            background: linear-gradient(#ff7a59, #e35a3c); color: #fff;
+            box-shadow: 0 6px 0 #9c3420, 0 10px 24px rgba(0,0,0,.4);
+            animation: latir 1.2s ease-in-out infinite;
+        }
+        @keyframes latir { 50% { transform: scale(1.06); } }
+        #carga.listo .tocar { display: inline-block; }
+        #carga.listo .barra, #carga.listo .pista { display: none; }
+        /* Los avisos originales de pygbag quedan ocultos: su texto se refleja
+           (traducido) en la tarjeta de carga. */
+        #infobox, #transfer { position: absolute !important; left: -9999px !important; }
+        @media (prefers-reduced-motion: reduce) {
+            #carga h1, #carga .relleno, #carga .tocar { animation: none; }
+        }
+    </style>
+
+    <script>
+        // Guarda el intérprete de Python en el dispositivo (ver sw.js): sin
+        // esto se volvía a descargar casi en cada visita.
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw.js:", e))
+        }
+
+        // Estados de la pantalla de carga; el bloque Python de arriba los avanza.
+        const TEXTOS_CARGA = {
+            descargando: "Descargando el motor del juego…",
+            preparando: "Preparando Candy Matrix…",
+            listo: "¡Listo!",
+            iniciando: "Iniciando…",
+        }
+        window.carga_estado = function (estado) {
+            const carga = document.getElementById("carga")
+            if (!carga) return
+            if (estado === "jugando") {
+                carga.classList.add("oculta")
+                setTimeout(() => carga.remove(), 600)
+                return
+            }
+            carga.classList.toggle("listo", estado === "listo")
+            const relleno = carga.querySelector(".relleno")
+            relleno.classList.toggle("indeterminada", estado === "preparando" || estado === "iniciando")
+            carga.querySelector(".estado").textContent = TEXTOS_CARGA[estado] || ""
+        }
+
+        // Al tocar, desbloquear el audio en ese mismo gesto. pygbag lo intenta
+        // por su cuenta solo cada 2 s, así que tras tocar "comenzar" se podía
+        // esperar hasta 2 s más sin motivo. Si el toque llega durante la
+        // descarga, el navegador recuerda el gesto y ni hará falta el aviso.
+        function desbloquear_audio() {
+            if (!window.MM || window.MM.UME) return
+            try {
+                const p = new Audio("{{cookiecutter.cdn}}empty.ogg").play()
+                if (p) p.then(() => { window.MM.UME = true }).catch(() => {})
+            } catch (e) {}
+        }
+        for (const tipo of ["pointerdown", "touchend", "click", "keydown"])
+            window.addEventListener(tipo, desbloquear_audio, { passive: true })
+
+        // ---------------- Progreso de la descarga ----------------
+        // El service worker (sw.js) cuenta los bytes de cada archivo del
+        // intérprete y los avisa aquí. La barra de pygbag (#progress) solo
+        // seguía uno de los dos archivos grandes, que bajan en paralelo, y
+        // marcaba 100 % mientras el otro seguía bajando. Los tamaños son los de
+        // pygbag 0.9.3 sin comprimir (lo que cuenta el service worker), fijos
+        // dentro de esa versión.
+        const ESPERADOS = { "main.wasm": 13447111, "main.data": 6668609, "main.js": 849985,
+                            "pygame": 1523059 }
+        const TOTAL = Object.values(ESPERADOS).reduce((a, b) => a + b, 0)
+        const recibidos = {}
+        let avisos_sw = false
+        let fase_descarga = true
+
+        function pintar_descarga(fraccion) {
+            const carga = document.getElementById("carga")
+            if (!carga || !fase_descarga) return
+            const relleno = carga.querySelector(".relleno")
+            if (relleno.classList.contains("indeterminada")) return
+            const pct = Math.min(100, Math.round(fraccion * 100))
+            relleno.style.width = pct + "%"
+            if (pct >= 100) {
+                // Descargado: falta que Python arranque dentro del navegador
+                // (unos segundos). Decirlo, en vez de dejar la barra quieta.
+                fase_descarga = false
+                relleno.classList.add("indeterminada")
+                carga.querySelector(".estado").textContent = "Iniciando Python en el navegador…"
+            } else {
+                carga.querySelector(".estado").textContent = TEXTOS_CARGA.descargando + " " + pct + "%"
+            }
+        }
+
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.addEventListener("message", (evento) => {
+                const d = evento.data
+                if (!d || d.tipo !== "descarga") return
+                let nombre = d.url.split("#")[0].split("/").pop()
+                if (nombre.startsWith("pygame_ce")) nombre = "pygame"
+                if (!(nombre in ESPERADOS)) return
+                avisos_sw = true
+                recibidos[nombre] = d.completo ? ESPERADOS[nombre] : Math.min(d.bytes, ESPERADOS[nombre])
+                // main.js es el cargador que pide los otros dos: si llega progreso
+                // de cualquiera de ellos, ya está cargado. No depender de su
+                // propio aviso, que al recargar en la misma pestaña puede
+                // enviarse antes de que exista la página nueva y perderse.
+                if (nombre !== "main.js") recibidos["main.js"] = ESPERADOS["main.js"]
+                pintar_descarga(Object.values(recibidos).reduce((a, b) => a + b, 0) / TOTAL)
+            })
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const carga = document.getElementById("carga")
+            const progreso = document.getElementById("progress")
+            const inicio = Date.now()
+            const intervalo = setInterval(() => {
+                if (!document.body.contains(carga)) return clearInterval(intervalo)
+                // Respaldo si el service worker aún no controla la página (la
+                // primerísima carga en algunos navegadores): la barra de pygbag.
+                if (!avisos_sw && progreso && Number(progreso.value) > 0)
+                    pintar_descarga(Math.min(0.95, Number(progreso.value) / 100))
+                // Conexión lenta: avisarlo con honestidad, no dejar adivinar.
+                if (fase_descarga && Date.now() - inicio > 15000) {
+                    const hecho = Object.values(recibidos).reduce((a, b) => a + b, 0) / TOTAL
+                    if (hecho < 0.35) carga.querySelector(".pista").textContent =
+                        "Tu conexión va lenta: esta primera vez puede tardar uno o dos minutos. " +
+                        "Después queda guardado y no se vuelve a descargar."
+                }
+            }, 250)
+            let ya_vino = false
+            try { ya_vino = !!localStorage.getItem("candy_visitado") } catch (e) {}
+            if (ya_vino) carga.querySelector(".pista").textContent =
+                "El motor ya está guardado en este dispositivo: solo falta que arranque."
+            try { localStorage.setItem("candy_visitado", "1") } catch (e) {}
+        })
+    </script>
+
+</head>
+
+<body>
+
+    <div id="carga" role="status" aria-live="polite">
+        <div class="tarjeta">
+            <h1><span style="color:#e63946">C</span><span style="color:#f7932a">A</span><span style="color:#f7cb3c">N</span><span style="color:#7cbe3c">D</span><span style="color:#4876d6">Y</span> <span style="color:#9b59b6">M</span><span style="color:#e95a82">A</span><span style="color:#e63946">T</span><span style="color:#f7932a">R</span><span style="color:#f7cb3c">I</span><span style="color:#7cbe3c">X</span></h1>
+            <p class="sub">Álgebra lineal jugando</p>
+            <div class="barra"><div class="relleno"></div></div>
+            <p class="estado">Descargando el motor del juego…</p>
+            <div class="tocar">Toca para comenzar</div>
+            <p class="pista">La primera vez se descarga Python para el navegador (unos 9&nbsp;MB) y puede tardar un poco. Después queda guardado y carga mucho más rápido.</p>
+        </div>
+    </div>
+
+    <div id="transfer" align=center>
+<!--        <div class="spinner" id='spinner'></div> -->
+        <div class="emscripten" id="status">Downloading...</div>
+        <div class="emscripten">
+            <progress value="0" max="100" id="progress"></progress>
+        </div>
+    </div>
+
+
+
+    <canvas class="emscripten" id="canvas"
+width="1px"
+height="1px"
+    oncontextmenu="event.preventDefault()" tabindex=1>
+    </canvas>
+
+    <canvas class="emscripten" id="canvas3d"
+width="{{cookiecutter.width}}px"
+height="{{cookiecutter.height}}px"
+    oncontextmenu="event.preventDefault()" tabindex=1 hidden>
+    </canvas>
+
+    <div id="infobox">Loading, please wait ...</div>
+
+    <div id=html></div>
+
+    <div id=crt  class=bottomright >
+
+        <div id="system" hidden>
+            <div class="button-container">
+                <button id="aiostop" disabled>AIO ⏏︎</button>
+                <button id="aiopaused_true" disabled>AIO ■</button>
+                <button id="aiopaused_false" disabled>AIO ▶</button>
+                <button id="pygame_mixer_music_pause" disabled>Music ■</button>
+            </div>
+
+            <div class="button-container">
+                <div id=load_min>min</div>
+                <div id=load_avg>avg</div>
+                <div id=load_max>max</div>
+              <button id="load_rst" disabled>RESET</button>
+            </div>
+
+            <div id="level">(battery level unknown)</div>
+            <div id="stateBattery">(charging state unknown)</div>
+
+        </div>
+
+        <div id=box class="emscripten_border" hidden=true>
+
+            <div id="info" class="trinfo"></div>
+
+            <iframe id="iframe" class="framed" name="iframe"
+width="470px" height="90%"
+allowtransparency="true"
+style="z-index: 10;"
+style="background: #FFFFFF;"
+frameborder="1"
+                allowfullscreen="true"
+                webkitallowfullscreen="true"
+                msallowfullscreen="true"
+                mozallowfullscreen="true"
+                sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock"
+                allow="autoplay; fullscreen *; geolocation; microphone; camera; midi; monetization; xr-spatial-tracking; gamepad; gyroscope; accelerometer; xr; cross-origin-isolated"
+                src="{{cookiecutter.cdn}}empty.html"
+                scrolling="yes">
+            </iframe>
+        </div>
+
+    </div>
+
+
+    <div id="dlg" hidden>
+        <input type="file" id="dlg_multifile" multiple accept="image/*">
+        <label for="dlg_multifile">Select files</label>
+    </div>
+
+    <div id="pyconsole">
+        <div id="terminal" tabIndex=1 align="left"></div>
+    </div>
+
+    <script type="application/javascript">
+
+    globalThis.__canvas_resized = (self, ecw, ech) => {
+        console.warn("TODO: panda3d canvas monitor", self, ecw, ech)
+    }
+
+    async function custom_onload(debug_hidden) {
+        // this is called before anything python is loaded
+        // make your js customization here
+        console.log(__FILE__, "custom_onload")
+
+        pyconsole.hidden = debug_hidden
+        system.hidden = debug_hidden
+        transfer.hidden = false  // oculto por CSS; su progreso se refleja en #carga
+        info.hidden = debug_hidden
+        box.hidden =  debug_hidden
+
+        show_infobox()
+    }
+
+    function custom_prerun(){
+        // no python main and no (MEMFS + VFS) yet.
+        console.log(__FILE__, "custom_prerun")
+
+    }
+
+    function custom_postrun(){
+        // python main and no VFS filesystem yet.
+        console.log(__FILE__, "custom_postrun")
+
+    }
+
+    function debug() {
+        // allow to gain access to dev tools from js console
+        // but only on desktop. difficult to reach when in iframe
+        python.config.debug = true
+        custom_onload(false)
+        Module.PyRun_SimpleString("shell.uptime()")
+        window_resize()
+    }
+
+    function info_inline(data){
+        document.getElementById("info").innerHTML = data
+    }
+
+    function info_online(url) {
+        // display info about current APK
+        fetch( url /*, options */)
+            .then((response) => response.text())
+            .then((html) => {
+                info_inline(html);
+        })
+        .catch((error) => {
+            console.warn(error);
+        });
+    }
+
+    function frame_online(url) {
+        window.frames["iframe"].location = url;
+    }
+
+    </script>
+
+</body>
+</html>

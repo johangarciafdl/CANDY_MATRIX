@@ -14,7 +14,7 @@ web. Eso es lo que hacen los scripts de esta carpeta.
 .venv\Scripts\pip install pygbag soundfile
 .venv\Scripts\python convert_audio.py     ::  .wav  ->  .ogg  (solo la primera vez)
 .venv\Scripts\python build_web.py         ::  compila a web/build/web/
-.venv\Scripts\python serve_web.py         ::  sirve en http://localhost:8000
+.venv\Scripts\python serve_web.py         ::  sirve en http://127.0.0.1:8000
 ```
 
 Para abrirlo desde el celular o la tablet en el mismo wifi:
@@ -33,7 +33,7 @@ pesa unos 110 KB.
 ## Publicar un link permanente (gratis)
 
 Lo que hay en `web/build/web/` son archivos estáticos: `index.html`,
-`web.apk`, `favicon.png`. Cualquier hosting estático gratuito funciona, y así no
+`web.tar.gz`, `favicon.png`, `sw.js`. Cualquier hosting estático gratuito funciona, y así no
 hace falta dejar la computadora prendida ni reenviar puertos.
 
 ### GitHub Pages — ya está publicado
@@ -43,7 +43,8 @@ hace falta dejar la computadora prendida ni reenviar puertos.
 > ### https://johangarciafdl.github.io/CANDY_MATRIX/
 
 Se sirve desde la rama `gh-pages`, que contiene **solo lo que genera
-`build_web.py`**: `index.html`, `web.apk`, `favicon.png` y un `.nojekyll`. No se
+`build_web.py`**: `index.html`, `web.tar.gz`, `favicon.png`, `sw.js`, la fuente
+del título y un `.nojekyll`. No se
 edita a mano — se regenera. El código fuente vive en `master`.
 
 #### Volver a publicar después de un cambio
@@ -60,15 +61,51 @@ resultado, no el código, y un commit en `master` no cambia el sitio por sí sol
 GitHub tarda un minuto largo en servir la versión nueva. Si ves la anterior,
 recarga forzando (Ctrl+F5, o en el celular borrando los datos del sitio).
 
-#### Una limitación que conviene conocer
+## Por qué tarda en cargar, y qué se hizo
 
-GitHub Pages no permite configurar cabeceras HTTP, así que no envía
-`Cross-Origin-Embedder-Policy`. pygbag funciona sin ella (va en modo de un solo
-hilo, sin `SharedArrayBuffer`), que es como corre este juego. Pero si algún día
-se añade algo que necesite hilos, Pages dejará de servir y habrá que mover el
-despliegue a itch.io, que sí tiene esa opción. El servidor local
-(`serve_web.py`) sí manda esas cabeceras, así que puede funcionar algo en local
-que falle en Pages: ante una diferencia rara entre los dos, sospecha de esto.
+Medido en un navegador real (Chrome) con una conexión de ~100 KB/s:
+
+| | Antes | Ahora |
+|---|---|---|
+| Primera visita | nunca terminaba | ~100–135 s (depende de la red) |
+| Siguientes visitas | — | ~15–25 s |
+
+**Lo que más pesa es Python, no el juego.** pygbag descarga de su CDN unos
+10 MB comprimidos: el motor (`main.wasm`, 4,5 MB), la biblioteca estándar
+(`main.data`, 4,4 MB) y pygame (1,5 MB). El juego en sí son ~210 KB. A esa
+velocidad la primera visita no puede bajar de ~1,5 minutos; donde sí se gana es
+en las siguientes.
+
+**`sw.js` (service worker)** guarda todo eso en el dispositivo. El CDN de
+pygbag solo deja cachearlo 10 minutos (`Cache-Control: max-age=600`), así que
+sin él se volvía a pedir casi en cada visita. Las rutas del intérprete llevan
+la versión (`/cdn/0.9.3/`, `pygame_ce-2.5.7…whl`), así que guardarlas para
+siempre no arriesga quedarse con una copia vieja. Los archivos del juego, en
+cambio, se piden siempre a la red primero: una publicación nueva se ve al
+recargar. Además, pide pygame en cuanto empieza la descarga del motor, para
+que baje mientras Python arranca y no después.
+
+**`web_template.tmpl`** es la pantalla de carga. La de pygbag ocultaba la barra
+de progreso y solo decía "Loading, please wait…", y su barra solo seguía uno de
+los dos archivos grandes (que bajan en paralelo), así que marcaba 100 % con
+medio minuto de descarga por delante. La nueva suma el progreso real de todos
+(lo cuenta `sw.js`), dice en español en qué fase está y, si la conexión va
+lenta, lo avisa. Al tocar la pantalla desbloquea el audio en ese mismo gesto:
+pygbag lo reintentaba solo cada 2 s.
+
+Lo que queda tras la descarga son ~15 s de **Python arrancando dentro del
+navegador** (trabajo del procesador). Eso es del motor de pygbag y no se puede
+acortar desde el juego.
+
+### Probar en local: 127.0.0.1, no localhost
+
+Si la dirección contiene `//localhost:`, pygbag cree que lo sirve su propio
+servidor de pruebas y pide pygame a `localhost/cdn/…`: da 404 y el juego queda
+en negro sin ningún error visible. `serve_web.py` se abre en
+`http://127.0.0.1:8000`, que se comporta igual que GitHub Pages.
+
+`serve_web.py` tampoco envía cabeceras COOP/COEP: GitHub Pages no las envía y
+con `Cross-Origin-Embedder-Policy: require-corp` el juego ni arranca.
 
 ### itch.io — la alternativa más simple
 

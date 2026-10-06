@@ -1,10 +1,20 @@
 # serve_web.py
 """Sirve la versión web ya compilada, para probarla en el navegador.
 
-No se usa `python -m http.server` a secas porque el runtime de pygbag necesita
-las cabeceras de aislamiento de origen (COOP/COEP): sin ellas el navegador no
-habilita SharedArrayBuffer y el .wasm no llega a arrancar — la pantalla se queda
-en negro sin un error claro.
+Sirve los archivos igual que GitHub Pages, que es donde se publica: sin
+cabeceras de aislamiento (COOP/COEP). Una versión anterior las enviaba creyendo
+que pygbag las necesitaba; no es así (pygbag corre en un solo hilo) y, peor,
+`Cross-Origin-Embedder-Policy: require-corp` bloquea recursos que pygbag carga
+de su servidor, así que con ellas el juego no arrancaba.
+La única cabecera añadida es la que evita que el navegador reutilice un .apk
+viejo tras recompilar.
+
+Ábrelo en http://127.0.0.1:8000, NO en http://localhost:8000. Si la dirección
+contiene "//localhost:", pygbag cree que lo sirve su propio servidor de pruebas
+(que hace de intermediario con su CDN) y pide pygame a localhost/cdn/...: aquí
+eso da 404 y el juego se queda en negro. Con 127.0.0.1 se comporta igual que
+publicado en GitHub Pages, y el service worker también funciona (127.0.0.1
+cuenta como origen seguro, igual que localhost).
 
 Tampoco se usa el servidor de pygbag directamente porque ese recompila el
 proyecto cada vez; esto solo sirve lo que ya hay en web/build/web.
@@ -28,13 +38,9 @@ SALIDA = os.path.join(RAIZ, "web", "build", "web")
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
-    """SimpleHTTPRequestHandler + las cabeceras que pide el runtime de pygbag."""
+    """SimpleHTTPRequestHandler que no deja cachear (como un despliegue recién hecho)."""
 
     def end_headers(self):
-        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
-        self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
-        self.send_header("Cross-Origin-Resource-Policy", "cross-origin")
-        self.send_header("Access-Control-Allow-Origin", "*")
         # El .apk cambia en cada compilación; sin esto el navegador reutiliza
         # el anterior y parece que los cambios no se aplicaron.
         self.send_header("Cache-Control", "no-store")
@@ -74,7 +80,7 @@ def main():
 
     servidor = http.server.ThreadingHTTPServer((host, args.puerto), handler)
     print("Sirviendo %s" % SALIDA)
-    print("  local:  http://localhost:%d" % args.puerto)
+    print("  local:  http://127.0.0.1:%d   (no uses 'localhost': ver arriba)" % args.puerto)
     if args.todas_las_interfaces:
         ip = ip_local()
         if ip:

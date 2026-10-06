@@ -21,7 +21,7 @@ import tempfile
 
 RAIZ = os.path.dirname(os.path.abspath(__file__))
 SALIDA = os.path.join(RAIZ, "web", "build", "web")
-ARCHIVOS = ("index.html", "web.apk", "favicon.png")
+ARCHIVOS = ("index.html", "web.apk", "web.tar.gz", "favicon.png", "sw.js", "Fredoka-700.ttf")
 URL = "https://johangarciafdl.github.io/CANDY_MATRIX/"
 
 
